@@ -16,7 +16,7 @@ int wpa_supplicant_delayed_sched_scan(struct wpa_supplicant *wpa_s,
 int wpa_supplicant_req_sched_scan(struct wpa_supplicant *wpa_s);
 void wpa_supplicant_cancel_scan(struct wpa_supplicant *wpa_s);
 void wpa_supplicant_cancel_delayed_sched_scan(struct wpa_supplicant *wpa_s);
-void wpa_supplicant_cancel_sched_scan(struct wpa_supplicant *wpa_s);
+int wpa_supplicant_cancel_sched_scan(struct wpa_supplicant *wpa_s);
 void wpa_supplicant_notify_scanning(struct wpa_supplicant *wpa_s,
 				    int scanning);
 struct wpa_driver_scan_params;
@@ -42,7 +42,6 @@ int wpas_scan_scheduled(struct wpa_supplicant *wpa_s);
 int wpa_supplicant_start_sched_scan(struct wpa_supplicant *wpa_s,
 				    struct wpa_driver_scan_params *params,
 				    int interval);
-int wpa_supplicant_stop_sched_scan(struct wpa_supplicant *wpa_s);
 struct wpa_driver_scan_params *
 wpa_scan_clone_params(const struct wpa_driver_scan_params *src);
 void wpa_scan_free_params(struct wpa_driver_scan_params *params);

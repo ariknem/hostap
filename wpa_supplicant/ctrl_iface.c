@@ -131,7 +131,7 @@ static int pno_stop(struct wpa_supplicant *wpa_s)
 
 	if (wpa_s->pno) {
 		wpa_s->pno = 0;
-		ret = wpa_supplicant_stop_sched_scan(wpa_s);
+		ret = wpa_supplicant_cancel_sched_scan(wpa_s);
 	}
 
 	if (wpa_s->wpa_state == WPA_SCANNING)

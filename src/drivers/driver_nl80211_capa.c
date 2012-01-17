@@ -355,6 +355,9 @@ static void wiphy_info_feature_flags(struct wiphy_info_data *info,
 	if (flags & NL80211_FEATURE_NEED_OBSS_SCAN)
 		capa->flags |= WPA_DRIVER_FLAGS_OBSS_SCAN;
 
+	if (flags & NL80211_FEATURE_SCHED_SCAN_INTERVALS)
+		capa->sched_scan_intervals_supported = 1;
+
 	if (flags & NL80211_FEATURE_AP_MODE_CHAN_WIDTH_CHANGE)
 		capa->flags |= WPA_DRIVER_FLAGS_HT_2040_COEX;
 

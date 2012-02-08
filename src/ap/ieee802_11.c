@@ -1672,6 +1672,15 @@ static void handle_assoc(struct hostapd_data *hapd,
 			       seq_ctrl);
 		return;
 	}
+
+	if ((sta->flags & WLAN_STA_ASSOC_REQ_OK) &&
+	    !(sta->flags & WLAN_STA_ASSOC)) {
+		hostapd_logger(hapd, mgmt->sa, HOSTAPD_MODULE_IEEE80211,
+			       HOSTAPD_LEVEL_INFO, "Station sent another "
+			       "assoc req before assoc resp. Discarding");
+		return;
+	}
+
 	sta->last_seq_ctrl = seq_ctrl;
 	sta->last_subtype = reassoc ? WLAN_FC_STYPE_REASSOC_REQ :
 		WLAN_FC_STYPE_ASSOC_REQ;
@@ -2270,6 +2279,7 @@ static void handle_assoc_cb(struct hostapd_data *hapd,
 			       "did not acknowledge association response");
 		if (status == WLAN_STATUS_SUCCESS)
 			hostapd_drv_sta_remove(hapd, sta->addr);
+		sta->flags &= ~WLAN_STA_ASSOC_REQ_OK;
 		return;
 	}
 

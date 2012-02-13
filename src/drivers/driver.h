@@ -3700,6 +3700,8 @@ enum wpa_event_type {
 	 * in device.
 	 */
 	EVENT_ACS_CHANNEL_SELECTED,
+
+	EVENT_START_ROAMING,
 };
 
 

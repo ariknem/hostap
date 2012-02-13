@@ -1642,6 +1642,7 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
 
 	os_memset(&params, 0, sizeof(params));
 	wpa_s->reassociate = 0;
+	wpa_s->roaming = 0;
 	wpa_s->eap_expected_failure = 0;
 	if (bss &&
 	    (!wpas_driver_bss_selection(wpa_s) || wpas_wps_searching(wpa_s))) {

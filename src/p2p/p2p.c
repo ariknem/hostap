@@ -702,7 +702,7 @@ int p2p_add_device(struct p2p_data *p2p, const u8 *addr, int freq,
 	struct p2p_message msg;
 	const u8 *p2p_dev_addr;
 	int wfd_changed;
-	int i;
+	int i, changed = 0;
 	struct os_reltime time_now;
 
 	os_memset(&msg, 0, sizeof(msg));
@@ -789,12 +789,24 @@ int p2p_add_device(struct p2p_data *p2p, const u8 *addr, int freq,
 			MACSTR " %d -> %d MHz (DS param %d)",
 			MAC2STR(dev->info.p2p_device_addr), dev->listen_freq,
 			freq, msg.ds_params ? *msg.ds_params : -1);
+		changed = 1;
 	}
+
 	if (scan_res) {
+		enum p2p_go_state old_state;
+
 		dev->listen_freq = freq;
 		if (msg.group_info)
 			dev->oper_freq = freq;
+
+		old_state = dev->go_state;
+		if (msg.group_info)
+			dev->go_state = REMOTE_GO;
+		else
+			dev->go_state = UNKNOWN_GO;
+		changed |= (old_state != dev->go_state);
 	}
+
 	dev->info.level = level;
 
 	p2p_copy_wps_info(p2p, dev, 0, &msg);
@@ -829,7 +841,7 @@ int p2p_add_device(struct p2p_data *p2p, const u8 *addr, int freq,
 
 	p2p_update_peer_vendor_elems(dev, ies, ies_len);
 
-	if (dev->flags & P2P_DEV_REPORTED && !wfd_changed)
+	if (dev->flags & P2P_DEV_REPORTED && !wfd_changed && !changed)
 		return 0;
 
 	p2p_dbg(p2p, "Peer found with Listen frequency %d MHz (rx_time=%u.%06u)",

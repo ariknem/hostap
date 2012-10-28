@@ -1229,6 +1229,10 @@ static void wpa_config_write_global(FILE *f, struct wpa_config *config)
 
 	if (config->user_mpm != DEFAULT_USER_MPM)
 		fprintf(f, "user_mpm=%d\n", config->user_mpm);
+
+	if (config->concurrent_sched_scan)
+		fprintf(f, "concurrent_sched_scan=%u\n",
+			config->concurrent_sched_scan);
 }
 
 #endif /* CONFIG_NO_CONFIG_WRITE */

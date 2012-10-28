@@ -6360,7 +6360,8 @@ static void wpas_ctrl_scan(struct wpa_supplicant *wpa_s, char *params,
 			wpa_s->scan_res_handler = NULL;
 	}
 
-	if (!wpa_s->sched_scanning && !wpa_s->scanning &&
+	if ((wpa_s->conf->concurrent_sched_scan || !wpa_s->sched_scanning) &&
+	    !wpa_s->scanning &&
 	    ((wpa_s->wpa_state <= WPA_SCANNING) ||
 	     (wpa_s->wpa_state == WPA_COMPLETED))) {
 		wpa_s->normal_scans = 0;
@@ -6375,7 +6376,8 @@ static void wpas_ctrl_scan(struct wpa_supplicant *wpa_s, char *params,
 			*reply_len = os_snprintf(reply, reply_size, "%u\n",
 						 wpa_s->manual_scan_id);
 		}
-	} else if (wpa_s->sched_scanning) {
+	} else if (wpa_s->sched_scanning &&
+		   !wpa_s->conf->concurrent_sched_scan) {
 		wpa_printf(MSG_DEBUG, "Stop ongoing sched_scan to allow requested full scan to proceed");
 		wpa_supplicant_cancel_sched_scan(wpa_s);
 		wpa_s->scan_req = MANUAL_SCAN_REQ;

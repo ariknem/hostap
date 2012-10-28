@@ -1135,6 +1135,12 @@ struct wpa_config {
 	 * If AMPE or SAE is enabled, the MPM is always in userspace.
 	 */
 	int user_mpm;
+
+	/*
+	 * concurrent_sched_scan - sched scan can run concurrently with normal
+	 * scan and no need to stop one to do the other.
+	 */
+	int concurrent_sched_scan;
 };
 
 

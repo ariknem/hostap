@@ -398,6 +398,9 @@ const char * hostapd_state_text(enum hostapd_iface_state s);
 int hostapd_switch_channel(struct hostapd_data *hapd,
 			   struct csa_settings *settings);
 void hostapd_cleanup_cs_params(struct hostapd_data *hapd);
+void hostapd_macaddr_acl_accept_sta(struct hostapd_data *hapd);
+void hostapd_macaddr_acl_deny_sta(struct hostapd_data *hapd);
+int hostapd_macaddr_acl_command(struct hostapd_data *hapd, char *cmd);
 
 /* utils.c */
 int hostapd_register_probereq_cb(struct hostapd_data *hapd,

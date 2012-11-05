@@ -2254,3 +2254,61 @@ int hostapd_switch_channel(struct hostapd_data *hapd,
 }
 
 #endif /* NEED_AP_MLME */
+
+void hostapd_macaddr_acl_accept_sta(struct hostapd_data *hapd)
+{
+	struct sta_info *sta = NULL;
+
+	if (hapd->conf->macaddr_acl != DENY_UNLESS_ACCEPTED)
+		return;
+
+	for (sta = hapd->sta_list; sta; sta = sta->next) {
+		if (!hostapd_maclist_found(hapd->conf->accept_mac,
+				hapd->conf->num_accept_mac, sta->addr, NULL)) {
+			hostapd_drv_sta_deauth(hapd, sta->addr,
+					       WLAN_REASON_PREV_AUTH_NOT_VALID);
+			ap_sta_deauthenticate(hapd, sta,
+					      WLAN_REASON_PREV_AUTH_NOT_VALID);
+		}
+	}
+}
+
+
+void hostapd_macaddr_acl_deny_sta(struct hostapd_data *hapd)
+{
+	struct sta_info *sta = NULL;
+
+	if (hapd->conf->macaddr_acl != ACCEPT_UNLESS_DENIED)
+		return;
+
+	for (sta = hapd->sta_list; sta; sta = sta->next) {
+		if (hostapd_maclist_found(hapd->conf->deny_mac,
+				hapd->conf->num_deny_mac, sta->addr, NULL)) {
+			hostapd_drv_sta_deauth(hapd, sta->addr,
+					       WLAN_REASON_PREV_AUTH_NOT_VALID);
+			ap_sta_deauthenticate(hapd, sta,
+					      WLAN_REASON_PREV_AUTH_NOT_VALID);
+		}
+	}
+}
+
+
+int hostapd_macaddr_acl_command(struct hostapd_data *hapd, char *cmd)
+{
+	int ret = 0;
+
+	if (os_strcasecmp(cmd, "accept") == 0) {
+		wpa_printf(MSG_DEBUG, "Changing to access control accept list");
+		hapd->conf->macaddr_acl = DENY_UNLESS_ACCEPTED;
+		hostapd_macaddr_acl_accept_sta(hapd);
+	} else if (os_strcasecmp(cmd, "deny") == 0) {
+		wpa_printf(MSG_DEBUG, "Changing to accees control deny list");
+		hapd->conf->macaddr_acl = ACCEPT_UNLESS_DENIED;
+		hostapd_macaddr_acl_deny_sta(hapd);
+	} else {
+		wpa_printf(MSG_ERROR, "Unknown acl command");
+		ret = -1;
+	}
+
+	return ret;
+}

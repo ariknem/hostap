@@ -438,6 +438,9 @@ void
 hostapd_switch_channel_fallback(struct hostapd_iface *iface,
 				const struct hostapd_freq_params *freq_params);
 void hostapd_cleanup_cs_params(struct hostapd_data *hapd);
+void hostapd_macaddr_acl_accept_sta(struct hostapd_data *hapd);
+void hostapd_macaddr_acl_deny_sta(struct hostapd_data *hapd);
+int hostapd_macaddr_acl_command(struct hostapd_data *hapd, char *cmd);
 
 /* utils.c */
 int hostapd_register_probereq_cb(struct hostapd_data *hapd,

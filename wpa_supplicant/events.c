@@ -2828,6 +2828,12 @@ static void wpa_supplicant_update_channel_list(
 				ifs, &ifs->hw.num_modes, &ifs->hw.flags);
 		}
 	}
+
+	/* Restart the sched scan with updated channel list */
+	if (wpa_s->sched_scanning) {
+		wpa_dbg(wpa_s, MSG_DEBUG, "Channel list changed restart sched scan.");
+		wpa_supplicant_req_sched_scan(wpa_s);
+	}
 }
 
 

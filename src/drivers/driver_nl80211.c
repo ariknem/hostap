@@ -246,6 +246,10 @@ struct i802_bss {
 
 	struct nl80211_wiphy_data *wiphy_data;
 	struct dl_list wiphy_list;
+
+#ifdef ANDROID
+	int rx_filter_idx;
+#endif
 };
 
 struct wpa_driver_nl80211_data {
@@ -3860,6 +3864,9 @@ static void * wpa_driver_nl80211_drv_init(void *ctx, const char *ifname,
 	bss->ctx = ctx;
 
 	os_strlcpy(bss->ifname, ifname, sizeof(bss->ifname));
+#ifdef ANDROID
+	bss->rx_filter_idx = -1;
+#endif
 	drv->monitor_ifidx = -1;
 	drv->monitor_sock = -1;
 	drv->eapol_tx_sock = -1;
@@ -9438,6 +9445,9 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
 	struct wpa_driver_nl80211_data *drv = bss->drv;
 	int ifidx;
 	int added = 1;
+#ifdef ANDROID
+	int filter_idx;
+#endif
 
 	if (addr)
 		os_memcpy(if_addr, addr, ETH_ALEN);
@@ -9513,6 +9523,26 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
 	}
 #endif /* CONFIG_P2P */
 
+#if defined(ANDROID) && !defined(HOSTAPD)
+	static u8 eth_addr_mask[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+	filter_idx = nl80211_register_rx_filter(bss, "unicast",
+					if_addr, ETH_ALEN,
+					eth_addr_mask,
+					NL80211_WOWLAN_ACTION_ALLOW);
+	if (filter_idx < 0) {
+		nl80211_remove_iface(drv, ifidx);
+		return -1;
+	}
+
+	if (bss->rx_filter_idx != -1)
+		wpa_printf(MSG_WARNING, "nl80211: Rx filter is already "
+			   "configured when it shouldn't be (idx=%d)",
+			   bss->rx_filter_idx);
+
+	bss->rx_filter_idx = filter_idx;
+#endif /* ANDROID && !HOSTAPD */
+
 	if (type == WPA_IF_AP_BSS) {
 		struct i802_bss *new_bss = os_zalloc(sizeof(*new_bss));
 		if (new_bss == NULL) {
@@ -9574,6 +9604,10 @@ static int wpa_driver_nl80211_if_remove(struct i802_bss *bss,
 		   __func__, type, ifname, ifindex, bss->added_if);
 	if (ifindex > 0 && (bss->added_if || bss->ifindex != ifindex))
 		nl80211_remove_iface(drv, ifindex);
+
+#ifdef ANDROID
+	nl80211_unregister_rx_filter(bss, bss->rx_filter_idx);
+#endif
 
 	if (type != WPA_IF_AP_BSS)
 		return 0;

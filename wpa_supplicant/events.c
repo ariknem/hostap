@@ -744,6 +744,14 @@ static struct wpa_ssid * wpa_scan_res_match(struct wpa_supplicant *wpa_s,
 		}
 	}
 
+#ifdef CONFIG_WPS
+	if (wpa_s->after_wps &&
+	    os_memcmp(wpa_s->wps_bssid, bss->bssid, ETH_ALEN)) {
+		wpa_dbg(wpa_s, MSG_DEBUG, "   skip - mismatching BSSID (WPS)");
+		return NULL;
+	}
+#endif /* CONFIG_WPS */
+
 	if (bss->ssid_len == 0) {
 		wpa_dbg(wpa_s, MSG_DEBUG, "   skip - SSID not known");
 		return NULL;

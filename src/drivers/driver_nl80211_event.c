@@ -968,7 +968,7 @@ static void mlme_event_ft_event(struct wpa_driver_nl80211_data *drv,
 
 
 static void send_scan_event(struct wpa_driver_nl80211_data *drv, int aborted,
-			    struct nlattr *tb[])
+			    int sched_scan_res, struct nlattr *tb[])
 {
 	union wpa_event_data event;
 	struct nlattr *nl;
@@ -1027,6 +1027,7 @@ static void send_scan_event(struct wpa_driver_nl80211_data *drv, int aborted,
 		wpa_printf(MSG_DEBUG, "nl80211: Scan included frequencies:%s",
 			   msg);
 	}
+	info->sched_scan = sched_scan_res;
 	wpa_supplicant_event(drv->ctx, EVENT_SCAN_RESULTS, &event);
 }
 
@@ -1746,13 +1747,13 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
 		drv->scan_complete_events = 1;
 		eloop_cancel_timeout(wpa_driver_nl80211_scan_timeout, drv,
 				     drv->ctx);
-		send_scan_event(drv, 0, tb);
+		send_scan_event(drv, 0, 0, tb);
 		break;
 	case NL80211_CMD_SCHED_SCAN_RESULTS:
 		wpa_dbg(drv->ctx, MSG_DEBUG,
 			"nl80211: New sched scan results available");
 		drv->scan_state = SCHED_SCAN_RESULTS;
-		send_scan_event(drv, 0, tb);
+		send_scan_event(drv, 0, 1, tb);
 		break;
 	case NL80211_CMD_SCAN_ABORTED:
 		wpa_dbg(drv->ctx, MSG_DEBUG, "nl80211: Scan aborted");
@@ -1763,7 +1764,7 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
 		 */
 		eloop_cancel_timeout(wpa_driver_nl80211_scan_timeout, drv,
 				     drv->ctx);
-		send_scan_event(drv, 1, tb);
+		send_scan_event(drv, 1, 0, tb);
 		break;
 	case NL80211_CMD_AUTHENTICATE:
 	case NL80211_CMD_ASSOCIATE:

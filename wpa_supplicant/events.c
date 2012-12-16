@@ -46,13 +46,6 @@
 #include "mesh_mpm.h"
 #include "wmm_ac.h"
 
-
-#ifndef CONFIG_NO_SCAN_PROCESSING
-static int wpas_select_network_from_last_scan(struct wpa_supplicant *wpa_s,
-					      int new_scan, int own_request);
-#endif /* CONFIG_NO_SCAN_PROCESSING */
-
-
 static int wpas_temp_disabled(struct wpa_supplicant *wpa_s,
 			      struct wpa_ssid *ssid)
 {
@@ -1261,6 +1254,7 @@ static int _wpa_supplicant_event_scan_results(struct wpa_supplicant *wpa_s,
 	struct wpa_scan_results *scan_res = NULL;
 	int ret = 0;
 	int ap = 0;
+	int sched_scan_res = 0;
 #ifndef CONFIG_NO_RANDOM_POOL
 	size_t i, num;
 #endif /* CONFIG_NO_RANDOM_POOL */
@@ -1287,6 +1281,8 @@ static int _wpa_supplicant_event_scan_results(struct wpa_supplicant *wpa_s,
 		ret = -1;
 		goto scan_work_done;
 	}
+
+	sched_scan_res = data && data->scan_info.sched_scan;
 
 #ifndef CONFIG_NO_RANDOM_POOL
 	num = scan_res->num;
@@ -1376,7 +1372,8 @@ static int _wpa_supplicant_event_scan_results(struct wpa_supplicant *wpa_s,
 		radio_work_done(work);
 	}
 
-	return wpas_select_network_from_last_scan(wpa_s, 1, own_request);
+	return wpas_select_network_from_last_scan(wpa_s, 1, own_request,
+						  sched_scan_res);
 
 scan_work_done:
 	wpa_scan_results_free(scan_res);
@@ -1389,8 +1386,9 @@ scan_work_done:
 }
 
 
-static int wpas_select_network_from_last_scan(struct wpa_supplicant *wpa_s,
-					      int new_scan, int own_request)
+int wpas_select_network_from_last_scan(struct wpa_supplicant *wpa_s,
+				       int new_scan, int own_request,
+				       int sched_scan_res)
 {
 	struct wpa_bss *selected;
 	struct wpa_ssid *ssid = NULL;
@@ -1555,7 +1553,7 @@ int wpa_supplicant_fast_associate(struct wpa_supplicant *wpa_s)
 		return -1;
 	}
 
-	return wpas_select_network_from_last_scan(wpa_s, 0, 1);
+	return wpas_select_network_from_last_scan(wpa_s, 0, 1, 0);
 #endif /* CONFIG_NO_SCAN_PROCESSING */
 }
 

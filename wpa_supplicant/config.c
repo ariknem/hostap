@@ -4040,6 +4040,7 @@ static const struct global_parse_data global_fields[] = {
 	{ INT(p2p_oper_reg_class), CFG_CHANGED_P2P_OPER_CHANNEL },
 	{ INT(p2p_oper_channel), CFG_CHANGED_P2P_OPER_CHANNEL },
 	{ INT_RANGE(p2p_go_intent, 0, 15), 0 },
+	{ INT_RANGE(override_p2p_go_intent, 0, 15), 0 },
 	{ STR(p2p_ssid_postfix), CFG_CHANGED_P2P_SSID_POSTFIX },
 	{ INT_RANGE(persistent_reconnect, 0, 1), 0 },
 	{ INT_RANGE(p2p_intra_bss, 0, 1), CFG_CHANGED_P2P_INTRA_BSS },

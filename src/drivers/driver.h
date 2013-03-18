@@ -3706,6 +3706,9 @@ enum wpa_event_type {
 	EVENT_ACS_CHANNEL_SELECTED,
 
 	EVENT_START_ROAMING,
+
+	EVENT_SMART_CONFIG_SYNC,
+	EVENT_SMART_CONFIG_DECODE,
 };
 
 
@@ -4404,6 +4407,18 @@ union wpa_event_data {
 		u8 pri_channel;
 		u8 sec_channel;
 	} acs_selected_channels;
+
+	struct smart_config_sync {
+		u32 freq;
+	} smart_config_sync;
+
+	struct smart_config_decode {
+		u8 *ssid;
+		u8 ssid_len;
+
+		u8 *psk;
+		u8 psk_len;
+	} smart_config_decode;
 };
 
 /**

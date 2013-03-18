@@ -6970,6 +6970,19 @@ static int nl80211_tdls_oper(void *priv, enum tdls_oper oper, const u8 *peer)
 
 #endif /* CONFIG TDLS */
 
+static int wpa_driver_nl80211_driver_cmd(void *priv, char *cmd, char *buf,
+					 size_t buf_len)
+{
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+	int ret = -1;
+
+#ifdef ANDROID
+	ret = wpa_driver_nl80211_driver_cmd_android(priv, cmd, buf, buf_len);
+#endif
+	return ret;
+}
+
 
 static int driver_nl80211_set_key(const char *ifname, void *priv,
 				  enum wpa_alg alg, const u8 *addr,
@@ -8253,9 +8266,7 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 	.get_noa = wpa_driver_get_p2p_noa,
 	.set_ap_wps_ie = wpa_driver_set_ap_wps_p2p_ie,
 #endif /* ANDROID_P2P */
-#ifdef ANDROID
 	.driver_cmd = wpa_driver_nl80211_driver_cmd,
-#endif /* ANDROID */
 	.vendor_cmd = nl80211_vendor_cmd,
 	.set_qos_map = nl80211_set_qos_map,
 	.set_wowlan = nl80211_set_wowlan,

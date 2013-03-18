@@ -184,6 +184,10 @@ extern "C" {
 
 #define AP_CSA_FINISHED "AP-CSA-FINISHED "
 
+/* smart config events */
+#define SMART_CONFIG_EVENT_SYNCED "SMART-CONFIG-SYNC-COMPLETE "
+#define SMART_CONFIG_EVENT_DECODED "SMART-CONFIG-SUCCESS "
+
 /* BSS command information masks */
 
 #define WPA_BSS_MASK_ALL		0xFFFDFFFF

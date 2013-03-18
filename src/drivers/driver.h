@@ -3384,6 +3384,9 @@ enum wpa_event_type {
 	EVENT_SURVEY,
 
 	EVENT_START_ROAMING,
+
+	EVENT_SMART_CONFIG_SYNC,
+	EVENT_SMART_CONFIG_DECODE,
 };
 
 
@@ -4095,6 +4098,18 @@ union wpa_event_data {
 	struct channel_list_changed {
 		enum reg_change_initiator initiator;
 	} channel_list_changed;
+
+	struct smart_config_sync {
+		u32 freq;
+	} smart_config_sync;
+
+	struct smart_config_decode {
+		u8 *ssid;
+		u8 ssid_len;
+
+		u8 *psk;
+		u8 psk_len;
+	} smart_config_decode;
 };
 
 /**

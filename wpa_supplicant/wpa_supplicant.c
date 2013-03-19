@@ -5184,3 +5184,21 @@ void wpas_rrm_handle_link_measurement_request(struct wpa_supplicant *wpa_s,
 	}
 	wpabuf_free(buf);
 }
+
+/**
+ * wpa_ssid_scanned - Return number of networks that should be ssid scanned
+ * @wpa_s: Pointer to the network interface
+ *
+ */
+int wpa_ssid_scanned(struct wpa_supplicant *wpa_s)
+{
+	struct wpa_ssid *ssid = NULL;
+	int cnt = 0;
+
+	for (ssid = wpa_s->conf->ssid; ssid; ssid = ssid->next)
+		if (!wpas_network_disabled(wpa_s, ssid) && ssid->scan_ssid)
+			cnt++;
+
+	wpa_dbg(wpa_s, MSG_DEBUG, "Total active hidden networks %d", cnt);
+	return cnt;
+}

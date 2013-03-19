@@ -1392,6 +1392,10 @@ int wpas_select_network_from_last_scan(struct wpa_supplicant *wpa_s,
 {
 	struct wpa_bss *selected;
 	struct wpa_ssid *ssid = NULL;
+	int max_sched_scan_ssids = wpa_s->max_sched_scan_ssids <
+				   WPAS_MAX_SCAN_SSIDS ?
+				   wpa_s->max_sched_scan_ssids :
+				   WPAS_MAX_SCAN_SSIDS;
 
 	selected = wpa_supplicant_pick_network(wpa_s, &ssid);
 
@@ -1514,6 +1518,10 @@ int wpas_select_network_from_last_scan(struct wpa_supplicant *wpa_s,
 				wpa_supplicant_req_new_scan(wpa_s, timeout_sec,
 							    timeout_usec);
 			}
+
+			if (wpa_ssid_scanned(wpa_s) > max_sched_scan_ssids)
+				wpa_supplicant_req_new_scan(wpa_s, timeout_sec,
+							    timeout_usec);
 		}
 	}
 	return 0;

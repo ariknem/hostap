@@ -61,6 +61,7 @@
 
 #ifdef ANDROID
 #include "android_drv.h"
+#define DIV_ROUND_UP(x, y) (((x) + (y - 1)) / (y))
 #endif /* ANDROID */
 #ifdef CONFIG_LIBNL20
 /* libnl 2.0 compatibility code */
@@ -180,6 +181,17 @@ struct nl80211_global {
 	struct nl_handle *nl_event;
 #ifdef ANDROID
 	int wowlan_triggers;
+	enum
+	{
+		NL80211_WOWLAN_MODE_DEFAULT 	= 0,
+		NL80211_WOWLAN_MODE_WHITELIST	= 1,
+		NL80211_WOWLAN_MODE_BLACKLIST	= 2,
+
+		NL80211_WOWLAN_MODES_MAX
+
+	};
+	int wowlan_mode;
+	int wowlan_mode_specific_mask[NL80211_WOWLAN_MODES_MAX];
 	int wowlan_enabled;
 #endif
 };
@@ -10391,7 +10403,7 @@ nl80211_sta_unicast_filter_get_pattern_handler(u8 *buf, int buflen, void *arg)
 static struct rx_filter rx_filters[NUM_RX_FILTERS] = {
 	/* ID 0 */
 	{.name = "sta_unicast",
-	 .pattern = {},
+	 .pattern = {0,0,0,0,0,0},
 	 .pattern_len = 6,
 	 .mask = { BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(4) | BIT(5) },
 	 .mask_len = 1,
@@ -10490,7 +10502,30 @@ static struct rx_filter rx_filters[NUM_RX_FILTERS] = {
 
 };
 
-#define DIV_ROUND_UP(x, y) (((x) + (y - 1)) / (y))
+/* Helper for adding user filter (by driver command) */
+static int nl80211_add_usr_filter(struct i802_bss *bss, char *name, u8 *pattern, int len,
+				 u8 *mask, u8 action)
+{
+	int j, idx;
+
+	struct rx_filter *filter;
+	struct nl80211_global *global = bss->drv->global;
+
+	for(idx = NUM_RX_FILTERS-1; idx >=0; idx --) {
+		filter = &rx_filters[idx];
+		if(filter->name == NULL) {
+			filter->name = name;
+			filter->pattern_len = len;
+			memcpy(filter->pattern, pattern, len);
+			filter->mask_len = DIV_ROUND_UP(len, 8);
+			memcpy(filter->mask, mask, filter->mask_len);
+			filter->action = action;
+
+			return idx;
+		}
+	}
+	return -1;
+}
 
 static inline int nl80211_rx_filter_configured(struct rx_filter *rx_filter)
 {
@@ -10512,7 +10547,7 @@ static int nl80211_set_wowlan_triggers(struct i802_bss *bss, int enable)
 		return -ENOMEM;
 
 	genlmsg_put(msg, 0, 0, global->nl80211_id, 0,
-		    0, NL80211_CMD_SET_WOWLAN, 0);
+			0, NL80211_CMD_SET_WOWLAN, 0);
 
 	NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, bss->drv->first_bss.ifindex);
 	wowtrig = nla_nest_start(msg, NL80211_ATTR_WOWLAN_TRIGGERS);
@@ -10537,9 +10572,19 @@ static int nl80211_set_wowlan_triggers(struct i802_bss *bss, int enable)
 		 * so unicast traffic won't be dropped in any case.
 		 */
 
-		filters = global->wowlan_triggers |= 1;
 
-		for (i = 0; i < NUM_RX_FILTERS; i++) {
+		if(global->wowlan_mode == NL80211_WOWLAN_MODE_WHITELIST) {
+			/* in case of white list - the unicast rule, does not make sense */
+			filters = (global->wowlan_triggers | global->wowlan_mode_specific_mask[global->wowlan_mode]) & ~1;
+		}
+		else {
+			filters = global->wowlan_triggers | global->wowlan_mode_specific_mask[global->wowlan_mode] | 1;
+		}
+
+		wpa_msg(bss->drv->ctx, MSG_ERROR, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX nl80211_set_wowlan_triggers::  wowlan_trigers=%x", filters);
+
+		/* changed the order of loop since most generic rules should appear last */
+		for (i = NUM_RX_FILTERS-1; i>=0; i--) {
 			struct rx_filter *rx_filter = &rx_filters[i];
 			int patnr = 1;
 			u8 *pattern;
@@ -10562,9 +10607,22 @@ static int nl80211_set_wowlan_triggers(struct i802_bss *bss, int enable)
 			NLA_PUT(pats, NL80211_WOWLAN_PKTPAT_PATTERN,
 				rx_filter->pattern_len,
 				pattern);
-
 			NLA_PUT_U8(pats, NL80211_WOWLAN_PKTPAT_ACTION,
 				   rx_filter->action);
+
+			wpa_msg(bss->drv->ctx, MSG_ERROR, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX nl80211_set_wowlan_triggers::      pattern=%s, action%d", rx_filter->name, rx_filter->action);
+			{
+				int j;
+				for(j=0;j<rx_filter->pattern_len;j+=8)
+				{
+					wpa_msg(bss->drv->ctx, MSG_ERROR, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX nl80211_set_wowlan_triggers::      (%02d-%02d) %02x %02x %02x %02x %02x %02x %02x %02x (mask=%02x)",
+						j,j+7,
+						pattern[j+0], pattern[j+1],pattern[j+2], pattern[j+3],
+						pattern[j+4], pattern[j+5],pattern[j+6], pattern[j+7],
+						rx_filter->mask[j/8]);
+				}
+			}
+
 
 			nla_nest_end(pats, pat);
 		}
@@ -10589,6 +10647,73 @@ nla_put_failure:
 	nlmsg_free(msg);
 	return ret;
 }
+
+/* Helper for clearing user filter (black or white) list (by driver command) */
+static int nl80211_wowlan_reset_list(struct i802_bss *bss, int wowlan_mode)
+{
+	int idx, cnt=0;
+	struct rx_filter *filter;
+	struct nl80211_global *global = bss->drv->global;
+
+	for(idx = NUM_RX_FILTERS-1; idx >=0; idx --) {
+		if(global->wowlan_mode_specific_mask[wowlan_mode] & (1<<idx))
+		{
+			filter = &rx_filters[idx];
+			filter->name = NULL;
+			cnt++;
+		}
+	}
+	global->wowlan_mode_specific_mask[wowlan_mode] = 0;
+	if(global->wowlan_mode == wowlan_mode)
+		nl80211_set_wowlan_triggers(bss, 1);
+
+	return cnt;
+}
+
+
+
+/* Helper for setting Transport Layer filter: UDP (proto=0x11) or TCP (proto=0x6) */
+static int nl80211_wowlan_add_TL_filter(struct i802_bss *bss, u8 tl_proto, u16 port, int wowlan_mode)
+{
+	int filter_idx;
+	struct nl80211_global *global = bss->drv->global;
+
+	u8 action = (wowlan_mode==NL80211_WOWLAN_MODE_WHITELIST)?
+			NL80211_WOWLAN_ACTION_ALLOW:NL80211_WOWLAN_ACTION_DROP;
+
+#define L4_PROTO_NUM_OFFSET		23
+#define L4_DEST_PORT_OFFSET 	36
+
+	u8 pattern[] = {0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   ,
+			0   , 0   , 0   , 0   , 0   , 0   , 0x45, 0   ,
+			0   , 0   , 0   , 0   , 0   , 0   , 0   , 0x00,
+			0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   ,
+			0   , 0   , 0   , 0   , 0x00, 0x00};
+
+	int len = sizeof(pattern);
+	u8 mask[] = { 	 0,
+					BIT(6),                               /* OCTET 2 */
+					BIT(7),                               /* OCTET 3 */
+					0,                                    /* OCTET 4 */
+					BIT(4) | BIT(5) };                    /* OCTET 5 */
+
+	/* set L4 Protocol number */
+	pattern[L4_PROTO_NUM_OFFSET]   = tl_proto & 0xff;
+
+	/* set port (network order) */
+	pattern[L4_DEST_PORT_OFFSET]   = (port>>8) & 0xff;
+	pattern[L4_DEST_PORT_OFFSET+1] =  port     & 0xff;
+
+	filter_idx = nl80211_add_usr_filter(bss, "TL-FILTER", pattern, len, mask, action);
+
+	if(filter_idx >=0) {
+		global->wowlan_mode_specific_mask[wowlan_mode] |= (1<<filter_idx);
+		if(global->wowlan_mode == wowlan_mode)
+			nl80211_set_wowlan_triggers(bss, 1);
+	}
+	return filter_idx;
+}
+
 
 static int nl80211_toggle_wowlan_trigger(struct i802_bss *bss, int nr,
 					 int enabled)
@@ -10638,6 +10763,7 @@ static int nl80211_add_rx_filter(char *name, u8 *pattern, int len,
 				 u8 *mask, u8 action)
 {
 	int i, j, pos;
+	struct rx_filter *filter;
 
 	if (name == NULL || pattern == NULL || mask == NULL) {
 		wpa_printf(MSG_ERROR, "nl80211: Add RX filter failed: "
@@ -10657,24 +10783,15 @@ static int nl80211_add_rx_filter(char *name, u8 *pattern, int len,
 		return -1;
 	}
 
-	for (i = 0; i < NUM_RX_FILTERS; i++) {
-		struct rx_filter *filter = &rx_filters[i];
-
-		if (filter->name)
-			continue;
-
-		filter->name = name;
-		filter->pattern_len = len;
-		memcpy(filter->pattern, pattern, len);
-		for (j = 0; j < len; j++)
-			if (mask[j]) {
-				pos = j / 8;
-				filter->mask[pos] |= 1 << (j % 8);
-			}
-
-		filter->mask_len = DIV_ROUND_UP(len, 8);
-		filter->action = action;
-		break;
+	if(os_strcmp(name, "unicast") == 0) {
+		/* unicast is the most generic filter and will be kept last*/
+		i = NUM_RX_FILTERS-1;
+	}
+	else {
+		for (i = 0; i < NUM_RX_FILTERS-1; i++) {
+			if (rx_filters[i].name == NULL)
+				break;
+		}
 	}
 
 	if (i == NUM_RX_FILTERS) {
@@ -10682,6 +10799,18 @@ static int nl80211_add_rx_filter(char *name, u8 *pattern, int len,
 		return -1;
 	}
 
+	filter = &rx_filters[i];
+	filter->name = name;
+	filter->pattern_len = len;
+	memcpy(filter->pattern, pattern, len);
+	for (j = 0; j < len; j++)
+		if (mask[j]) {
+			pos = j / 8;
+			filter->mask[pos] |= 1 << (j % 8);
+		}
+
+	filter->mask_len = DIV_ROUND_UP(len, 8);
+	filter->action = action;
 	return i;
 }
 
@@ -11345,6 +11474,23 @@ static int android_pno_stop(struct i802_bss *bss)
 }
 
 
+enum
+{
+	CMD_WOWLAN_SET_MODE 			= 0,
+	CMD_WOWLAN_WL_ADD_TCP_FILTER 	= 1,
+	CMD_WOWLAN_WL_DEL_TCP_FILTER 	= 2,
+	CMD_WOWLAN_WL_ADD_UDP_FILTER 	= 3,
+	CMD_WOWLAN_WL_DEL_UDP_FILTER 	= 4,
+	CMD_WOWLAN_WL_RESET			 	= 5,
+	CMD_WOWLAN_BL_ADD_TCP_FILTER 	= 6,
+	CMD_WOWLAN_BL_DEL_TCP_FILTER 	= 7,
+	CMD_WOWLAN_BL_ADD_UDP_FILTER 	= 8,
+	CMD_WOWLAN_BL_DEL_UDP_FILTER 	= 9,
+	CMD_WOWLAN_BL_RESET			 	= 10,
+
+};
+
+
 static int wpa_driver_nl80211_driver_cmd_android(void *priv, char *cmd, char *buf,
 					 size_t buf_len)
 {
@@ -11396,6 +11542,54 @@ static int wpa_driver_nl80211_driver_cmd_android(void *priv, char *cmd, char *bu
 		return nl80211_set_wowlan_triggers(bss, 1);
 	} else if( os_strcasecmp(cmd, "RXFILTER-STOP") == 0 ) {
 		return nl80211_set_wowlan_triggers(bss, 0);
+	} else	if (os_strncasecmp(cmd, "NV-FLT-CONFIG", 13) == 0) {
+		static u8 eth_addr_mask[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+		struct nl80211_global *global = bss->drv->global;
+		int filter_idx;
+	int command =  atoi(cmd+14);
+	unsigned int value = atoi(cmd+14+2);
+	u16 protocol;
+	int i;
+
+#define TCP_PROTO_NUM 0x6
+#define UDP_PROTO_NUM 0x11
+
+		switch (command)
+		{
+			case CMD_WOWLAN_SET_MODE:
+				/* Set Mode */
+				drv->global->wowlan_mode = value;
+				nl80211_set_wowlan_triggers(bss, 1);
+				break;
+			case CMD_WOWLAN_WL_ADD_TCP_FILTER:
+			case CMD_WOWLAN_WL_ADD_UDP_FILTER:
+				/* Add White-List Filter entry */
+				protocol = (command==CMD_WOWLAN_WL_ADD_TCP_FILTER) ? TCP_PROTO_NUM:UDP_PROTO_NUM;
+				filter_idx = nl80211_wowlan_add_TL_filter(bss, protocol, value, NL80211_WOWLAN_MODE_WHITELIST);
+				break;
+			case CMD_WOWLAN_WL_DEL_TCP_FILTER:
+			case CMD_WOWLAN_WL_DEL_UDP_FILTER:
+				/* Remove TL Filter entry */
+				break;
+			case CMD_WOWLAN_WL_RESET:
+				/*  Clear white entry */
+				nl80211_wowlan_reset_list(bss, NL80211_WOWLAN_MODE_WHITELIST);
+				break;
+			case CMD_WOWLAN_BL_ADD_TCP_FILTER:
+			case CMD_WOWLAN_BL_ADD_UDP_FILTER:
+				/* Add Black-List TL Filter entry */
+				protocol = (command==CMD_WOWLAN_BL_ADD_TCP_FILTER) ? TCP_PROTO_NUM:UDP_PROTO_NUM;
+				filter_idx = nl80211_wowlan_add_TL_filter(bss, protocol, value, NL80211_WOWLAN_MODE_BLACKLIST);
+				break;
+			case CMD_WOWLAN_BL_DEL_TCP_FILTER:
+			case CMD_WOWLAN_BL_DEL_UDP_FILTER:
+				/* Remove TL Filter entry */
+				break;
+			case CMD_WOWLAN_BL_RESET:
+				/*  Clear black entry */
+				nl80211_wowlan_reset_list(bss, NL80211_WOWLAN_MODE_BLACKLIST);
+				break;
+		}
 	} else {
 		wpa_printf(MSG_ERROR, "Unsupported command: %s", cmd);
 		ret = -1;

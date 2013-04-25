@@ -4466,6 +4466,8 @@ static int p2p_ctrl_disallow_freq(struct wpa_supplicant *wpa_s,
 	return 0;
 }
 
+#define NV_FLT_CMD 		"NV-FLT-CONFIG"
+#define NV_FLT_CMD_SIZE sizeof(NV_FLT_CMD)
 
 static int p2p_ctrl_set(struct wpa_supplicant *wpa_s, char *cmd)
 {
@@ -5231,6 +5233,10 @@ static int wpa_supplicant_driver_cmd(struct wpa_supplicant *wpa_s, char *cmd,
 				country[2] = 0x04;
 				p2p_set_country(p2p, country);
 			}
+		} else if (os_strncasecmp(cmd, NV_FLT_CMD, NV_FLT_CMD_SIZE) == 0) {
+			int command =  atoi(cmd+NV_FLT_CMD_SIZE);
+			int value = atoi(cmd+NV_FLT_CMD_SIZE+2);
+			ret = wpa_drv_driver_cmd(wpa_s, cmd, buf, buflen);
 		} else if (os_strncasecmp(cmd, "SETBAND ", 8) == 0) {
 			int val = atoi(cmd + 8);
 			uint setband = 0;

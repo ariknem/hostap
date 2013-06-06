@@ -11546,16 +11546,18 @@ static int wpa_driver_nl80211_driver_cmd_android(void *priv, char *cmd, char *bu
 		static u8 eth_addr_mask[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 		struct nl80211_global *global = bss->drv->global;
 		int filter_idx;
-	int command =  atoi(cmd+14);
-	unsigned int value = atoi(cmd+14+2);
-	u16 protocol;
-	int i;
+		int command =  atoi(cmd+14);
+		int value;
+		u16 protocol;
+		char *p_value = os_strchr(cmd+14,' ');
+		p_value++;
 
 #define TCP_PROTO_NUM 0x6
 #define UDP_PROTO_NUM 0x11
+		do {
+			value = atoi(p_value);
 
-		switch (command)
-		{
+			switch (command) {
 			case CMD_WOWLAN_SET_MODE:
 				/* Set Mode */
 				drv->global->wowlan_mode = value;
@@ -11589,7 +11591,10 @@ static int wpa_driver_nl80211_driver_cmd_android(void *priv, char *cmd, char *bu
 				/*  Clear black entry */
 				nl80211_wowlan_reset_list(bss, NL80211_WOWLAN_MODE_BLACKLIST);
 				break;
-		}
+			}
+			p_value = os_strchr(p_value, ';');
+
+		}while (p_value && *(++p_value));
 	} else {
 		wpa_printf(MSG_ERROR, "Unsupported command: %s", cmd);
 		ret = -1;

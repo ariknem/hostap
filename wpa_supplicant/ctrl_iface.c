@@ -5886,6 +5886,10 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 #endif /* CONFIG_AUTOSCAN */
 #ifdef ANDROID
 	} else if (os_strncmp(buf, "DRIVER ", 7) == 0) {
+		if(strstr(buf, "SETMIRACAST 1"))
+			wpa_s->global->miracast_active = 1;
+		else if(strstr(buf, "SETMIRACAST 0"))
+			wpa_s->global->miracast_active = 0;
 		reply_len = wpa_supplicant_driver_cmd(wpa_s, buf + 7, reply,
 						      reply_size);
 #endif /* ANDROID */

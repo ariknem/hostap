@@ -274,6 +274,8 @@ struct wpa_global {
 #endif /* CONFIG_WIFI_DISPLAY */
 
 	struct psk_list_entry *add_psk; /* From group formation */
+
+	int miracast_active;
 };
 
 

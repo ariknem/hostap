@@ -598,6 +598,27 @@ static void wpa_supplicant_scan(void *eloop_ctx, void *timeout_ctx)
 	struct wpa_driver_scan_params *scan_params;
 	size_t max_ssids;
 	enum wpa_states prev_state;
+#ifdef ANDROID_P2P
+	if (wpa_s->global->miracast_active)
+	{
+		wpa_dbg(wpa_s, MSG_ERROR, "Scantype is %d miracst mode %d",
+			wpa_s->scan_req,wpa_s->global->miracast_active);
+		/* check for p2p inetrface and skip the scan if there is an active
+		   miracast secession. Allow the scan when scan_type == 2 since this
+		   will be triggered from wpa_cli and from android settings page.
+		   Also allow scan when scan_type == 1 since this will be triggered at
+		   the time of P2P connection.
+		 */
+		if (strstr(wpa_s->global->ifaces->ifname,"p2p-") &&
+			(wpa_s->scan_req != 2 && wpa_s->scan_req != 1))
+		{
+			wpa_dbg(wpa_s, MSG_ERROR, "Skip  scan - since miracast is active");
+			/* try later */
+			wpa_supplicant_req_scan(wpa_s, 10, 0);
+			return;
+		}
+	}
+#endif
 
 	if (wpa_s->wpa_state == WPA_INTERFACE_DISABLED) {
 		wpa_dbg(wpa_s, MSG_DEBUG, "Skip scan - interface disabled");

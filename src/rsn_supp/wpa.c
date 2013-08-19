@@ -1088,6 +1088,10 @@ static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
 			MAC2STR(sm->bssid));
 		goto failed;
 	}
+	/* Add 60msec delay before sending EAPOL4 frame, since Flames
+	   sink is not able to send the ACK for EAPOL4 if we send with out
+	   any delay */
+	os_sleep(0,60000);
 
 	if (wpa_supplicant_send_4_of_4(sm, sm->bssid, key, ver, key_info,
 				       NULL, 0, &sm->ptk)) {

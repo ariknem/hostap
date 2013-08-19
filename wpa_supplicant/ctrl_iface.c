@@ -5233,6 +5233,14 @@ static int wpa_supplicant_driver_cmd(struct wpa_supplicant *wpa_s, char *cmd,
 				country[2] = 0x04;
 				p2p_set_country(p2p, country);
 			}
+		} else if (os_strncasecmp(cmd, "SETMIRACAST ", 12) == 0) {
+			/* We are not taking any action in driver if miracast mode is
+			 * active like disable roaming, change ampdu size etc as we are
+			 * waiting for the api from TI side.
+			 */
+			wpa_printf(MSG_DEBUG, "SETMIRACAST is not implemented in the "
+				   "driver, so do not send the command to the driver");
+			ret = 0;
 		} else if (os_strncasecmp(cmd, NV_FLT_CMD, NV_FLT_CMD_SIZE) == 0) {
 			int command =  atoi(cmd+NV_FLT_CMD_SIZE);
 			int value = atoi(cmd+NV_FLT_CMD_SIZE+2);

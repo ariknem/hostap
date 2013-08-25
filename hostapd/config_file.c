@@ -3182,6 +3182,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
 	} else if (os_strcmp(buf, "wowlan_triggers") == 0) {
 		os_free(bss->wowlan_triggers);
 		bss->wowlan_triggers = os_strdup(pos);
+	} else if (os_strcmp(buf, "ap_channel_sync") == 0) {
+		conf->ap_channel_sync = atoi(pos);
 	} else {
 		wpa_printf(MSG_ERROR,
 			   "Line %d: unknown configuration item '%s'",

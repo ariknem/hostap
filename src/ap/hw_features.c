@@ -1085,7 +1085,6 @@ out:
 	return hostapd_setup_interface_complete(iface, ret);
 }
 
-
 static int valid_ap_channel(struct hostapd_iface *iface, int chan)
 {
 	int j;
@@ -1399,6 +1398,7 @@ static int hostapd_auto_select_channel(struct hostapd_iface *iface)
 int hostapd_select_hw_mode(struct hostapd_iface *iface)
 {
 	int i;
+	struct wpa_channel_info info;
 
 	if (iface->num_hw_features < 1)
 		return -1;
@@ -1445,6 +1445,35 @@ int hostapd_select_hw_mode(struct hostapd_iface *iface)
 
 			return -3;
 		}
+	}
+
+	/* if we failed in querying the channel, assume no concurrent operation */
+	if (iface->conf->ap_channel_sync &&
+	    hostapd_drv_shared_ap_freq(iface->bss[0], &info) == 1) {
+		u8 chan;
+		int hw_mode = ieee80211_freq_to_chan(info.frequency, &chan);
+
+		if (hw_mode == NUM_HOSTAPD_MODES) {
+			wpa_printf(MSG_ERROR, "Shared AP freq bad channel");
+			return -3;
+		}
+
+		/* set current mode */
+		for (i = 0; i < iface->num_hw_features; i++) {
+			struct hostapd_hw_modes *mode = &iface->hw_features[i];
+
+			if (mode->mode == hw_mode) {
+				iface->current_mode = mode;
+				break;
+			}
+		}
+
+		iface->conf->channel = chan;
+		iface->conf->secondary_channel = info.sec_channel_offset;
+		wpa_printf(MSG_DEBUG, "Channel automatically synced to "
+			   "existing AP: %d (secondary: %d hw_mode: %s)",
+			   chan, info.sec_channel_offset,
+			   hostapd_hw_mode_txt(hw_mode));
 	}
 
 	switch (hostapd_check_chans(iface)) {

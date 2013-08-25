@@ -333,4 +333,11 @@ static inline int hostapd_drv_vendor_cmd(struct hostapd_data *hapd,
 					data_len, buf);
 }
 
+static inline int hostapd_drv_shared_ap_freq(struct hostapd_data *hapd,
+					     struct wpa_channel_info *info)
+{
+	if (hapd->driver == NULL || hapd->driver->shared_ap_freq == NULL)
+		return -1;
+	return hapd->driver->shared_ap_freq(hapd->drv_priv, info);
+}
 #endif /* AP_DRV_OPS */

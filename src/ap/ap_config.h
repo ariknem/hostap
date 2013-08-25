@@ -549,6 +549,8 @@ struct hostapd_config {
 #ifdef CONFIG_ACS
 	unsigned int acs_num_scans;
 #endif /* CONFIG_ACS */
+
+	int ap_channel_sync;
 };
 
 

@@ -935,6 +935,19 @@ out:
 }
 
 
+static u8 freq_to_channel(int freq)
+{
+	if (freq >= 2412 && freq <= 2472)
+		return (freq - 2407) / 5;
+	else if (freq == 2484)
+		return 14;
+	else if (freq >= 5180 && freq <= 5805)
+		return (freq - 5000) / 5;
+
+	return 0;
+}
+
+
 /**
  * hostapd_select_hw_mode - Select the hardware mode
  * @iface: Pointer to interface data.
@@ -946,6 +959,7 @@ out:
 int hostapd_select_hw_mode(struct hostapd_iface *iface)
 {
 	int i;
+	struct wpa_channel_info info;
 
 	if (iface->num_hw_features < 1)
 		return -1;
@@ -968,6 +982,22 @@ int hostapd_select_hw_mode(struct hostapd_iface *iface)
 			       "(%d) (hw_mode in hostapd.conf)",
 			       (int) iface->conf->hw_mode);
 		return -2;
+	}
+
+	/* if we failed in querying the channel, assume no concurrent operation */
+	if (iface->conf->ap_channel_sync &&
+	    hostapd_drv_shared_ap_freq(iface->bss[0], &info) == 1) {
+		u8 chan = freq_to_channel(info.frequency);
+		if (chan == 0) {
+			wpa_printf(MSG_ERROR, "Shared AP freq bad channel");
+			return -3;
+		}
+
+		iface->conf->channel = chan;
+		iface->conf->secondary_channel = info.sec_channel_offset;
+		wpa_printf(MSG_DEBUG, "Channel automatically synced to "
+			   "existing AP: %d (secondary: %d)",
+			   chan, info.sec_channel_offset);
 	}
 
 	switch (hostapd_check_chans(iface)) {

@@ -988,7 +988,7 @@ enum nl80211_commands {
  * 	to query the CRDA to retrieve one regulatory domain. This attribute can
  * 	also be used by userspace to query the kernel for the currently set
  * 	regulatory domain. We chose an alpha2 as that is also used by the
- * 	IEEE-802.11 country information element to identify a country.
+ * 	IEEE-802.11d country information element to identify a country.
  * 	Users can also simply ask the wireless core to set regulatory domain
  * 	to a specific alpha2.
  * @NL80211_ATTR_REG_RULES: a nested array of regulatory domain regulatory
@@ -1269,7 +1269,9 @@ enum nl80211_commands {
  *	triggers.
  *
  * @NL80211_ATTR_SCHED_SCAN_INTERVAL: Interval between scheduled scan
- *	cycles, in msecs.
+ *	cycles, in msecs. If short interval is supported by the driver
+ *      and configured then this will be used only after the requested
+ *      number of short intervals
  *
  * @NL80211_ATTR_SCHED_SCAN_MATCH: Nested attribute with one or more
  *	sets of attributes to match during scheduled scans.  Only BSSs
@@ -1495,18 +1497,26 @@ enum nl80211_commands {
  *
  * @NL80211_ATTR_RXMGMT_FLAGS: flags for nl80211_send_mgmt(), u32.
  *	As specified in the &enum nl80211_rxmgmt_flags.
+ * @%NL80211_ATTR_SCAN_MIN_DWELL: Minimum scan dwell time (in TUs), u32
+ *	attribute to setup minimum time to wait on each channel, if received
+ *	at least one probe response during this period will continue waiting
+ *	%NL80211_ATTR_SCAN_MAX_DWELL, otherwise will move to next channel.
+ *	Relevant only for active scan, used with %NL80211_CMD_TRIGGER_SCAN
+ *	command. This is optional attribute, so if it's not set driver should
+ *	use hardware default values.
+ * @%NL80211_ATTR_SCAN_MAX_DWELL: Maximum scan dwell time (in TUs), u32
+ *	attribute to setup maximum time to wait on each channel.
+ *	Relevant only for active scan, used with %NL80211_CMD_TRIGGER_SCAN
+ *	command. This is optional attribute, so if it's not set driver should
+ *	use hardware default values.
+ * @%NL80211_ATTR_SCAN_NUM_PROBE:  Attribute (u8) to setup number of probe
+ *	requests to transmit on each active scan channel, used with
+ *	%NL80211_CMD_TRIGGER_SCAN command.
  *
- * @NL80211_ATTR_STA_SUPPORTED_CHANNELS: array of supported channels.
- *
- * @NL80211_ATTR_STA_SUPPORTED_OPER_CLASSES: array of supported
- *      supported operating classes.
- *
- * @NL80211_ATTR_HANDLE_DFS: A flag indicating whether user space
- *	controls DFS operation in IBSS mode. If the flag is included in
- *	%NL80211_CMD_JOIN_IBSS request, the driver will allow use of DFS
- *	channels and reports radar events to userspace. Userspace is required
- *	to react to radar events, e.g. initiate a channel switch or leave the
- *	IBSS network.
+ * @NL80211_ATTR_SCHED_SCAN_SHORT_INTERVAL: interval between
+ *      each short interval scheduled scan cycle in msecs.
+ * @NL80211_ATTR_SCHED_SCAN_NUM_SHORT_INTERVALS: number of short
+ *      sched scan intervals before switching to the long interval
  *
  * @NL80211_ATTR_MAX: highest attribute number currently defined
  * @__NL80211_ATTR_AFTER_LAST: internal use
@@ -1818,11 +1828,12 @@ enum nl80211_attrs {
 
 	NL80211_ATTR_RXMGMT_FLAGS,
 
-	NL80211_ATTR_STA_SUPPORTED_CHANNELS,
+	NL80211_ATTR_SCAN_MIN_DWELL,
+	NL80211_ATTR_SCAN_MAX_DWELL,
+	NL80211_ATTR_SCAN_NUM_PROBE,
 
-	NL80211_ATTR_STA_SUPPORTED_OPER_CLASSES,
-
-	NL80211_ATTR_HANDLE_DFS,
+	NL80211_ATTR_SCHED_SCAN_SHORT_INTERVAL,
+	NL80211_ATTR_SCHED_SCAN_NUM_SHORT_INTERVALS,
 
 	/* add attributes here, update the policy in nl80211.c */
 
@@ -3192,8 +3203,28 @@ enum nl80211_packet_pattern_attr {
 	NL80211_PKTPAT_PATTERN,
 	NL80211_PKTPAT_OFFSET,
 
+	NL80211_PKTPAT_ACTION = NL80211_PKTPAT_PATTERN + 10,
+
 	NUM_NL80211_PKTPAT,
 	MAX_NL80211_PKTPAT = NUM_NL80211_PKTPAT - 1,
+};
+
+/**
+ * enum nl80211_wowlan_action - WoWLAN packet pattern action
+ * @NL80211_WOWLAN_ACTION_ALLOW: this pattern should wake up the host
+ * and the packet should be forwarded to the host unless this packet
+ * matches a DROP rule.
+ * @NL80211_WOWLAN_ACTION_DROP: a packet containing this pattern shouldn't
+ * wake up the host.
+ */
+enum nl80211_wowlan_action {
+	__NL80211_WOWLAN_ACTION_INVALID,
+	NL80211_WOWLAN_ACTION_ALLOW,
+	NL80211_WOWLAN_ACTION_DROP,
+
+	/* keep last */
+	NUM_NL80211_WOWLAN_ACTION,
+	MAX_NL80211_WOWLAN_ACTION = NUM_NL80211_WOWLAN_ACTION - 1,
 };
 
 /**
@@ -3235,6 +3266,7 @@ struct nl80211_pattern_support {
  *	is detected is implementation-specific (flag)
  * @NL80211_WOWLAN_TRIG_MAGIC_PKT: wake up on magic packet (6x 0xff, followed
  *	by 16 repetitions of MAC addr, anywhere in payload) (flag)
+ * @NL80211_WOWLAN_TRIG_PKT_PATTERN_DEFAULT_ACTION: default action for packet filtering
  * @NL80211_WOWLAN_TRIG_PKT_PATTERN: wake up on the specified packet patterns
  *	which are passed in an array of nested attributes, each nested attribute
  *	defining a with attributes from &struct nl80211_wowlan_trig_pkt_pattern.
@@ -3309,6 +3341,7 @@ enum nl80211_wowlan_triggers {
 	NL80211_WOWLAN_TRIG_WAKEUP_TCP_MATCH,
 	NL80211_WOWLAN_TRIG_WAKEUP_TCP_CONNLOST,
 	NL80211_WOWLAN_TRIG_WAKEUP_TCP_NOMORETOKENS,
+	NL80211_WOWLAN_TRIG_PKT_PATTERN_DEFAULT_ACTION,
 
 	/* keep last */
 	NUM_NL80211_WOWLAN_TRIG,
@@ -3778,6 +3811,7 @@ enum nl80211_feature_flags {
 	NL80211_FEATURE_FULL_AP_CLIENT_STATE		= 1 << 15,
 	NL80211_FEATURE_USERSPACE_MPM			= 1 << 16,
 	NL80211_FEATURE_ACTIVE_MONITOR			= 1 << 17,
+	NL80211_FEATURE_SCHED_SCAN_INTERVALS  = 1 << 20,
 };
 
 /**
@@ -3878,12 +3912,13 @@ enum nl80211_radar_event {
  *
  * Channel states used by the DFS code.
  *
- * @NL80211_DFS_USABLE: The channel can be used, but channel availability
+ * @IEEE80211_DFS_USABLE: The channel can be used, but channel availability
  *	check (CAC) must be performed before using it for AP or IBSS.
- * @NL80211_DFS_UNAVAILABLE: A radar has been detected on this channel, it
+ * @IEEE80211_DFS_UNAVAILABLE: A radar has been detected on this channel, it
  *	is therefore marked as not available.
- * @NL80211_DFS_AVAILABLE: The channel has been CAC checked and is available.
+ * @IEEE80211_DFS_AVAILABLE: The channel has been CAC checked and is available.
  */
+
 enum nl80211_dfs_state {
 	NL80211_DFS_USABLE,
 	NL80211_DFS_UNAVAILABLE,

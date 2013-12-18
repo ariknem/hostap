@@ -1983,8 +1983,13 @@ int hostapd_add_iface(struct hapd_interfaces *interfaces, char *buf)
 		return -1;
 	*ptr++ = '\0';
 
-	if (os_strncmp(ptr, "config=", 7) == 0)
+	if (os_strncmp(ptr, "config=", 7) == 0) {
 		conf_file = ptr + 7;
+
+		ptr = os_strchr(ptr, ' ');
+		if (ptr)
+			*ptr++ = '\0';
+	}
 
 	for (i = 0; i < interfaces->count; i++) {
 		if (!os_strcmp(interfaces->iface[i]->conf->bss[0]->iface,
@@ -2023,6 +2028,10 @@ int hostapd_add_iface(struct hapd_interfaces *interfaces, char *buf)
 
 	if (start_ctrl_iface(hapd_iface) < 0)
 		goto fail;
+
+	if (ptr && os_strstr(ptr, "enable=1"))
+		if (hostapd_enable_iface(hapd_iface) < 0)
+			goto fail;
 
 	wpa_printf(MSG_INFO, "Add interface '%s'", conf->bss[0]->iface);
 

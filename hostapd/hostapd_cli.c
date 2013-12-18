@@ -88,6 +88,11 @@ static const char *commands_help =
 "   license              show full hostapd_cli license\n"
 "   quit                 exit hostapd_cli\n";
 
+static const char *global_commands_help =
+"Commands:\n"
+"   help                 show this usage help\n"
+"   quit                 exit hostapd_cli\n";
+
 extern struct wpa_ctrl *ctrl_conn;
 static int hostapd_cli_quit = 0;
 static int hostapd_cli_attached = 0;
@@ -98,6 +103,7 @@ static int hostapd_cli_attached = 0;
 static const char *ctrl_iface_dir = CONFIG_CTRL_IFACE_DIR;
 
 static char *ctrl_ifname = NULL;
+static char *global_iface_path = NULL;
 static const char *pid_file = NULL;
 static const char *action_file = NULL;
 static int ping_interval = 5;
@@ -110,14 +116,16 @@ static void usage(void)
 	fprintf(stderr,
 		"\n"
 		"usage: hostapd_cli [-p<path>] [-i<ifname>] [-hvB] "
-		"[-a<path>] \\\n"
-		"                   [-G<ping interval>] [command..]\n"
+		"[-a<path>]\\\n"
+		"                   [-G<ping interval>] [command..] "
+		"[-g<global ctrl>]\n"
 		"\n"
 		"Options:\n"
 		"   -h           help (show this usage text)\n"
 		"   -v           shown version information\n"
 		"   -p<path>     path to find control sockets (default: "
 		"/var/run/hostapd)\n"
+		"   -g<path>     path to global control interface\n"
 		"   -a<file>     run in daemon mode executing the action file "
 		"based on events\n"
 		"                from hostapd\n"
@@ -680,7 +688,10 @@ static int hostapd_cli_cmd_all_sta(struct wpa_ctrl *ctrl, int argc,
 
 static int hostapd_cli_cmd_help(struct wpa_ctrl *ctrl, int argc, char *argv[])
 {
-	printf("%s", commands_help);
+	if (global_iface_path)
+		printf("%s", global_commands_help);
+	else
+		printf("%s", commands_help);
 	return 0;
 }
 
@@ -1030,14 +1041,27 @@ static struct hostapd_cli_cmd hostapd_cli_commands[] = {
 	{ NULL, NULL }
 };
 
+static struct hostapd_cli_cmd hostapd_global_cli_commands[] = {
+	{ "ping", hostapd_cli_cmd_ping },
+	{ "help", hostapd_cli_cmd_help },
+	{ "relog", hostapd_cli_cmd_relog },
+	{ "quit", hostapd_cli_cmd_quit },
+	{ "raw", hostapd_cli_cmd_raw },
+	{ NULL, NULL }
+};
 
 static void wpa_request(struct wpa_ctrl *ctrl, int argc, char *argv[])
 {
-	struct hostapd_cli_cmd *cmd, *match = NULL;
+	struct hostapd_cli_cmd *cmd, *cmd_list, *match = NULL;
 	int count;
 
 	count = 0;
-	cmd = hostapd_cli_commands;
+	if (global_iface_path)
+		cmd_list = hostapd_global_cli_commands;
+	else
+		cmd_list = hostapd_cli_commands;
+
+	cmd = cmd_list;
 	while (cmd->cmd) {
 		if (strncasecmp(cmd->cmd, argv[0], strlen(argv[0])) == 0) {
 			match = cmd;
@@ -1053,7 +1077,7 @@ static void wpa_request(struct wpa_ctrl *ctrl, int argc, char *argv[])
 
 	if (count > 1) {
 		printf("Ambiguous command '%s'; possible commands:", argv[0]);
-		cmd = hostapd_cli_commands;
+		cmd = cmd_list;
 		while (cmd->cmd) {
 			if (strncasecmp(cmd->cmd, argv[0], strlen(argv[0])) ==
 			    0) {
@@ -1248,7 +1272,7 @@ int main(int argc, char *argv[])
 		return -1;
 
 	for (;;) {
-		c = getopt(argc, argv, "a:BhG:i:p:v");
+		c = getopt(argc, argv, "a:BhG:i:p:vg:");
 		if (c < 0)
 			break;
 		switch (c) {
@@ -1274,6 +1298,9 @@ int main(int argc, char *argv[])
 		case 'p':
 			ctrl_iface_dir = optarg;
 			break;
+		case 'g':
+			global_iface_path = optarg;
+			break;
 		default:
 			usage();
 			return -1;
@@ -1291,6 +1318,12 @@ int main(int argc, char *argv[])
 		return -1;
 
 	for (;;) {
+		if (global_iface_path) {
+			ctrl_conn = wpa_ctrl_open(global_iface_path);
+			/* we might want to refactor this instead... */
+			goto ctrl_opened;
+		}
+
 		if (ctrl_ifname == NULL) {
 			struct dirent *dent;
 			DIR *dir = opendir(ctrl_iface_dir);
@@ -1308,7 +1341,9 @@ int main(int argc, char *argv[])
 				closedir(dir);
 			}
 		}
+
 		ctrl_conn = hostapd_cli_open_connection(ctrl_ifname);
+ctrl_opened:
 		if (ctrl_conn) {
 			if (warning_displayed)
 				printf("Connection established.\n");

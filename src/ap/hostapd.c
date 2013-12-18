@@ -1944,12 +1944,10 @@ int hostapd_add_iface(struct hapd_interfaces *interfaces, char *buf)
 
 		if (new_iface) {
 			if (interfaces->driver_init(hapd_iface)) {
-				interfaces->count--;
 				goto fail;
 			}
 
 			if (hostapd_setup_interface(hapd_iface)) {
-				interfaces->count--;
 				hostapd_deinit_driver(
 					hapd_iface->bss[0]->driver,
 					hapd_iface->bss[0]->drv_priv,
@@ -1997,13 +1995,6 @@ int hostapd_add_iface(struct hapd_interfaces *interfaces, char *buf)
 		}
 	}
 
-	hapd_iface = hostapd_iface_alloc(interfaces);
-	if (hapd_iface == NULL) {
-		wpa_printf(MSG_ERROR, "%s: Failed to allocate memory "
-			   "for interface", __func__);
-		goto fail;
-	}
-
 	if (conf_file && interfaces->config_read_cb) {
 		conf = interfaces->config_read_cb(conf_file);
 		if (conf && conf->bss)
@@ -2014,11 +2005,17 @@ int hostapd_add_iface(struct hapd_interfaces *interfaces, char *buf)
 	if (conf == NULL || conf->bss == NULL) {
 		wpa_printf(MSG_ERROR, "%s: Failed to allocate memory "
 			   "for configuration", __func__);
-		goto fail;
+		return -1;
 	}
 
-	hapd_iface = hostapd_data_alloc(interfaces, conf);
+	hapd_iface = hostapd_iface_alloc(interfaces);
 	if (hapd_iface == NULL) {
+		wpa_printf(MSG_ERROR, "%s: Failed to allocate memory "
+			   "for interface", __func__);
+		goto cleanup_conf;
+	}
+
+	if (!hostapd_data_alloc(interfaces, conf)) {
 		wpa_printf(MSG_ERROR, "%s: Failed to allocate memory "
 			   "for hostapd", __func__);
 		goto fail;
@@ -2032,30 +2029,15 @@ int hostapd_add_iface(struct hapd_interfaces *interfaces, char *buf)
 	return 0;
 
 fail:
+	if (hapd_iface) {
+		hostapd_interface_deinit_free(hapd_iface);
+		conf = NULL;
+	}
+	/* this should better be refactored somehow into the deinit function */
+	interfaces->count--;
+cleanup_conf:
 	if (conf)
 		hostapd_config_free(conf);
-	if (hapd_iface) {
-		if (hapd_iface->bss) {
-			for (i = 0; i < hapd_iface->num_bss; i++) {
-				hapd = hapd_iface->bss[i];
-				if (!hapd)
-					continue;
-				if (hapd_iface->interfaces &&
-				    hapd_iface->interfaces->ctrl_iface_deinit)
-					hapd_iface->interfaces->
-						ctrl_iface_deinit(hapd);
-				wpa_printf(MSG_DEBUG, "%s: free hapd %p (%s)",
-					   __func__, hapd_iface->bss[i],
-					   hapd->conf->iface);
-				hostapd_cleanup(hapd);
-				os_free(hapd);
-				hapd_iface->bss[i] = NULL;
-			}
-			os_free(hapd_iface->bss);
-			hapd_iface->bss = NULL;
-		}
-		hostapd_cleanup_iface(hapd_iface);
-	}
 	return -1;
 }
 

@@ -88,7 +88,7 @@ static const char *commands_help =
 "   license              show full hostapd_cli license\n"
 "   quit                 exit hostapd_cli\n";
 
-static struct wpa_ctrl *ctrl_conn;
+extern struct wpa_ctrl *ctrl_conn;
 static int hostapd_cli_quit = 0;
 static int hostapd_cli_attached = 0;
 
@@ -101,7 +101,7 @@ static char *ctrl_ifname = NULL;
 static const char *pid_file = NULL;
 static const char *action_file = NULL;
 static int ping_interval = 5;
-static int interactive = 0;
+extern int interactive;
 
 
 static void usage(void)
@@ -168,41 +168,6 @@ static void hostapd_cli_msg_cb(char *msg, size_t len)
 {
 	printf("%s\n", msg);
 }
-
-
-static int _wpa_ctrl_command(struct wpa_ctrl *ctrl, char *cmd, int print)
-{
-	char buf[4096];
-	size_t len;
-	int ret;
-
-	if (ctrl_conn == NULL) {
-		printf("Not connected to hostapd - command dropped.\n");
-		return -1;
-	}
-	len = sizeof(buf) - 1;
-	ret = wpa_ctrl_request(ctrl, cmd, strlen(cmd), buf, &len,
-			       hostapd_cli_msg_cb);
-	if (ret == -2) {
-		printf("'%s' command timed out.\n", cmd);
-		return -2;
-	} else if (ret < 0) {
-		printf("'%s' command failed.\n", cmd);
-		return -1;
-	}
-	if (print) {
-		buf[len] = '\0';
-		printf("%s", buf);
-	}
-	return 0;
-}
-
-
-static inline int wpa_ctrl_command(struct wpa_ctrl *ctrl, char *cmd)
-{
-	return _wpa_ctrl_command(ctrl, cmd, 1);
-}
-
 
 static int hostapd_cli_cmd_ping(struct wpa_ctrl *ctrl, int argc, char *argv[])
 {

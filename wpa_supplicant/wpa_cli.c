@@ -66,7 +66,6 @@ static const char *wpa_cli_full_license =
 "OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n"
 "\n";
 
-static struct wpa_ctrl *ctrl_conn;
 static struct wpa_ctrl *mon_conn;
 static int wpa_cli_quit = 0;
 static int wpa_cli_attached = 0;
@@ -80,8 +79,10 @@ static char *ctrl_ifname = NULL;
 static const char *pid_file = NULL;
 static const char *action_file = NULL;
 static int ping_interval = 5;
-static int interactive = 0;
-static char *ifname_prefix = NULL;
+
+extern struct wpa_ctrl *ctrl_conn;
+extern int interactive;
+extern char *ifname_prefix;
 
 struct cli_txt_entry {
 	struct dl_list list;
@@ -393,94 +394,6 @@ static void wpa_cli_close_connection(void)
 static void wpa_cli_msg_cb(char *msg, size_t len)
 {
 	printf("%s\n", msg);
-}
-
-
-static int _wpa_ctrl_command(struct wpa_ctrl *ctrl, char *cmd, int print)
-{
-	char buf[4096];
-	size_t len;
-	int ret;
-
-	if (ctrl_conn == NULL) {
-		printf("Not connected to wpa_supplicant - command dropped.\n");
-		return -1;
-	}
-	if (ifname_prefix) {
-		os_snprintf(buf, sizeof(buf), "IFNAME=%s %s",
-			    ifname_prefix, cmd);
-		buf[sizeof(buf) - 1] = '\0';
-		cmd = buf;
-	}
-	len = sizeof(buf) - 1;
-	ret = wpa_ctrl_request(ctrl, cmd, os_strlen(cmd), buf, &len,
-			       wpa_cli_msg_cb);
-	if (ret == -2) {
-		printf("'%s' command timed out.\n", cmd);
-		return -2;
-	} else if (ret < 0) {
-		printf("'%s' command failed.\n", cmd);
-		return -1;
-	}
-	if (print) {
-		buf[len] = '\0';
-		printf("%s", buf);
-		if (interactive && len > 0 && buf[len - 1] != '\n')
-			printf("\n");
-	}
-	return 0;
-}
-
-
-static int wpa_ctrl_command(struct wpa_ctrl *ctrl, char *cmd)
-{
-	return _wpa_ctrl_command(ctrl, cmd, 1);
-}
-
-
-static int write_cmd(char *buf, size_t buflen, const char *cmd, int argc,
-		     char *argv[])
-{
-	int i, res;
-	char *pos, *end;
-
-	pos = buf;
-	end = buf + buflen;
-
-	res = os_snprintf(pos, end - pos, "%s", cmd);
-	if (os_snprintf_error(end - pos, res))
-		goto fail;
-	pos += res;
-
-	for (i = 0; i < argc; i++) {
-		res = os_snprintf(pos, end - pos, " %s", argv[i]);
-		if (os_snprintf_error(end - pos, res))
-			goto fail;
-		pos += res;
-	}
-
-	buf[buflen - 1] = '\0';
-	return 0;
-
-fail:
-	printf("Too long command\n");
-	return -1;
-}
-
-
-static int wpa_cli_cmd(struct wpa_ctrl *ctrl, const char *cmd, int min_args,
-		       int argc, char *argv[])
-{
-	char buf[4096];
-	if (argc < min_args) {
-		printf("Invalid %s command - at least %d argument%s "
-		       "required.\n", cmd, min_args,
-		       min_args > 1 ? "s are" : " is");
-		return -1;
-	}
-	if (write_cmd(buf, sizeof(buf), cmd, argc, argv) < 0)
-		return -1;
-	return wpa_ctrl_command(ctrl, buf);
 }
 
 
@@ -1933,8 +1846,6 @@ static int wpa_cli_cmd_p2p_get_passphrase(struct wpa_ctrl *ctrl, int argc,
 static int wpa_cli_cmd_p2p_serv_disc_req(struct wpa_ctrl *ctrl, int argc,
 					 char *argv[])
 {
-	char cmd[4096];
-
 	if (argc != 2 && argc != 4) {
 		printf("Invalid P2P_SERV_DISC_REQ command: needs two "
 		       "arguments (address and TLVs) or four arguments "
@@ -1943,9 +1854,7 @@ static int wpa_cli_cmd_p2p_serv_disc_req(struct wpa_ctrl *ctrl, int argc,
 		return -1;
 	}
 
-	if (write_cmd(cmd, sizeof(cmd), "P2P_SERV_DISC_REQ", argc, argv) < 0)
-		return -1;
-	return wpa_ctrl_command(ctrl, cmd);
+	return wpa_cli_cmd(ctrl, "P2P_SERV_DISC_REQ", 2, argc, argv);
 }
 
 
@@ -2358,37 +2267,27 @@ static int wpa_cli_cmd_hs20_anqp_get(struct wpa_ctrl *ctrl, int argc,
 static int wpa_cli_cmd_get_nai_home_realm_list(struct wpa_ctrl *ctrl, int argc,
 					       char *argv[])
 {
-	char cmd[512];
-
 	if (argc == 0) {
 		printf("Command needs one or two arguments (dst mac addr and "
 		       "optional home realm)\n");
 		return -1;
 	}
 
-	if (write_cmd(cmd, sizeof(cmd), "HS20_GET_NAI_HOME_REALM_LIST",
-		      argc, argv) < 0)
-		return -1;
-
-	return wpa_ctrl_command(ctrl, cmd);
+	return wpa_cli_cmd(ctrl, "HS20_GET_NAI_HOME_REALM_LIST", 1,
+			   argc, argv);
 }
 
 
 static int wpa_cli_cmd_hs20_icon_request(struct wpa_ctrl *ctrl, int argc,
 					 char *argv[])
 {
-	char cmd[512];
-
 	if (argc < 2) {
 		printf("Command needs two arguments (dst mac addr and "
 		       "icon name)\n");
 		return -1;
 	}
 
-	if (write_cmd(cmd, sizeof(cmd), "HS20_ICON_REQUEST", argc, argv) < 0)
-		return -1;
-
-	return wpa_ctrl_command(ctrl, cmd);
+	return wpa_cli_cmd(ctrl, "HS20_ICON_REQUEST", 1, argc, argv);
 }
 
 

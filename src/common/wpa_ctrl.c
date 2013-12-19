@@ -37,6 +37,9 @@
 #define CTRL_IFACE_SOCKET
 #endif /* CONFIG_CTRL_IFACE_UNIX || CONFIG_CTRL_IFACE_UDP */
 
+struct wpa_ctrl *ctrl_conn = NULL;
+char *ifname_prefix = NULL;
+int interactive;
 
 /**
  * struct wpa_ctrl - Internal structure for control interface library
@@ -729,4 +732,94 @@ int wpa_ctrl_get_fd(struct wpa_ctrl *ctrl)
 
 #endif /* CONFIG_CTRL_IFACE_NAMED_PIPE */
 
+static void wpa_ctrl_msg_cb(char *msg, size_t len)
+{
+	printf("%s\n", msg);
+}
+
+int _wpa_ctrl_command(struct wpa_ctrl *ctrl, char *cmd, int print)
+{
+	char buf[4096];
+	size_t len;
+	int ret;
+
+	if (ctrl_conn == NULL) {
+		printf("Not connected to wpa_supplicant - command dropped.\n");
+		return -1;
+	}
+	if (ifname_prefix) {
+		os_snprintf(buf, sizeof(buf), "IFNAME=%s %s",
+			    ifname_prefix, cmd);
+		buf[sizeof(buf) - 1] = '\0';
+		cmd = buf;
+	}
+	len = sizeof(buf) - 1;
+	ret = wpa_ctrl_request(ctrl, cmd, os_strlen(cmd), buf, &len,
+			       wpa_ctrl_msg_cb);
+	if (ret == -2) {
+		printf("'%s' command timed out.\n", cmd);
+		return -2;
+	} else if (ret < 0) {
+		printf("'%s' command failed.\n", cmd);
+		return -1;
+	}
+	if (print) {
+		buf[len] = '\0';
+		printf("%s", buf);
+		if (interactive && len > 0 && buf[len - 1] != '\n')
+			printf("\n");
+	}
+	return 0;
+}
+
+
+int wpa_ctrl_command(struct wpa_ctrl *ctrl, char *cmd)
+{
+	return _wpa_ctrl_command(ctrl, cmd, 1);
+}
+
+
+static int write_cmd(char *buf, size_t buflen, const char *cmd, int argc,
+		     char *argv[])
+{
+	int i, res;
+	char *pos, *end;
+
+	pos = buf;
+	end = buf + buflen;
+
+	res = os_snprintf(pos, end - pos, "%s", cmd);
+	if (os_snprintf_error(end - pos, res))
+		goto fail;
+	pos += res;
+
+	for (i = 0; i < argc; i++) {
+		res = os_snprintf(pos, end - pos, " %s", argv[i]);
+		if (os_snprintf_error(end - pos, res))
+			goto fail;
+		pos += res;
+	}
+
+	buf[buflen - 1] = '\0';
+	return 0;
+
+fail:
+	printf("Too long command\n");
+	return -1;
+}
+
+int wpa_cli_cmd(struct wpa_ctrl *ctrl, const char *cmd, int min_args,
+		int argc, char *argv[])
+{
+	char buf[4096];
+	if (argc < min_args) {
+		printf("Invalid %s command - at least %d argument%s "
+		       "required.\n", cmd, min_args,
+		       min_args > 1 ? "s are" : " is");
+		return -1;
+	}
+	if (write_cmd(buf, sizeof(buf), cmd, argc, argv) < 0)
+		return -1;
+	return wpa_ctrl_command(ctrl, buf);
+}
 #endif /* CONFIG_CTRL_IFACE */

@@ -199,6 +199,12 @@ static int hostapd_cli_cmd_mib(struct wpa_ctrl *ctrl, int argc, char *argv[])
 	return wpa_ctrl_command(ctrl, "MIB");
 }
 
+static int hostapd_cli_cmd_raw(struct wpa_ctrl *ctrl, int argc, char *argv[])
+{
+	if (argc == 0)
+		return -1;
+	return wpa_cli_cmd(ctrl, argv[0], 0, argc - 1, &argv[1]);
+}
 
 static int hostapd_cli_exec(const char *program, const char *arg1,
 			    const char *arg2)
@@ -1011,6 +1017,7 @@ static struct hostapd_cli_cmd hostapd_cli_commands[] = {
 	{ "quit", hostapd_cli_cmd_quit },
 	{ "set", hostapd_cli_cmd_set },
 	{ "get", hostapd_cli_cmd_get },
+	{ "raw", hostapd_cli_cmd_raw },
 	{ "set_qos_map_set", hostapd_cli_cmd_set_qos_map_set },
 	{ "send_qos_map_conf", hostapd_cli_cmd_send_qos_map_conf },
 	{ "chan_switch", hostapd_cli_cmd_chan_switch },

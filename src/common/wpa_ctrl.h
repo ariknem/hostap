@@ -337,6 +337,11 @@ int wpa_ctrl_get_fd(struct wpa_ctrl *ctrl);
 
 char * wpa_ctrl_get_remote_ifname(struct wpa_ctrl *ctrl);
 
+int _wpa_ctrl_command(struct wpa_ctrl *ctrl, char *cmd, int print);
+int wpa_ctrl_command(struct wpa_ctrl *ctrl, char *cmd);
+int wpa_cli_cmd(struct wpa_ctrl *ctrl, const char *cmd, int min_args,
+		       int argc, char *argv[]);
+
 #ifdef ANDROID
 /**
  * wpa_ctrl_cleanup() - Delete any local UNIX domain socket files that

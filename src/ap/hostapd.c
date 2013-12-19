@@ -1078,6 +1078,35 @@ static int setup_interface2(struct hostapd_iface *iface)
 	return hostapd_setup_interface_complete(iface, 0);
 }
 
+static int hostapd_sync_channel(struct hostapd_iface *hapd_iface)
+{
+	int i;
+
+	if (!hapd_iface->interfaces)
+		return -1;
+
+	wpa_printf(MSG_DEBUG, "Syncing AP channel");
+
+	for (i = 0; i < hapd_iface->interfaces->count; i++) {
+		struct hostapd_iface *iface = hapd_iface->interfaces->iface[i];
+
+		if (iface->state != HAPD_IFACE_ENABLED)
+			continue;
+
+		hapd_iface->conf->hw_mode = iface->conf->hw_mode;
+		hapd_iface->conf->channel = iface->conf->channel;
+		hapd_iface->conf->secondary_channel =
+				iface->conf->secondary_channel;
+		wpa_printf(MSG_DEBUG, "Channel automatically synced to "
+			   "existing AP: %d (secondary: %d) (mode: %s)",
+			   iface->conf->channel,
+			   iface->conf->secondary_channel,
+			   hostapd_hw_mode_txt(iface->conf->hw_mode));
+		return 1;
+	}
+
+	return 0;
+}
 
 /**
  * hostapd_setup_interface_complete - Complete interface setup
@@ -1102,6 +1131,10 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 	}
 
 	wpa_printf(MSG_DEBUG, "Completing interface initialization");
+
+	if (iface->conf->ap_channel_sync)
+		hostapd_sync_channel(iface);
+
 	if (iface->conf->channel) {
 #ifdef NEED_AP_MLME
 		int res;

@@ -10600,14 +10600,14 @@ static int nl80211_set_wowlan_triggers(struct i802_bss *bss, int enable)
 				continue;
 
 			pat = nla_nest_start(pats, patnr++);
-			NLA_PUT(pats, NL80211_WOWLAN_PKTPAT_MASK,
+			NLA_PUT(pats, NL80211_PKTPAT_MASK,
 				rx_filter->mask_len,
 				rx_filter->mask);
 
-			NLA_PUT(pats, NL80211_WOWLAN_PKTPAT_PATTERN,
+			NLA_PUT(pats, NL80211_PKTPAT_PATTERN,
 				rx_filter->pattern_len,
 				pattern);
-			NLA_PUT_U8(pats, NL80211_WOWLAN_PKTPAT_ACTION,
+			NLA_PUT_U8(pats, NL80211_PKTPAT_ACTION,
 				   rx_filter->action);
 
 			wpa_msg(bss->drv->ctx, MSG_ERROR, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX nl80211_set_wowlan_triggers::      pattern=%s, action%d", rx_filter->name, rx_filter->action);

@@ -158,6 +158,15 @@ static int dfs_chan_range_available(struct hostapd_hw_modes *mode,
 	return 1;
 }
 
+static int in_array(int *arr, int size, int value)
+{
+	int i;
+
+	for (i = 0; i < size; i++)
+		if (arr[i] == value)
+			return 1;
+	return 0;
+}
 
 static int is_in_chanlist(struct hostapd_iface *iface,
 			  struct hostapd_channel_data *chan)
@@ -189,6 +198,7 @@ static int dfs_find_channel(struct hostapd_iface *iface,
 	struct hostapd_hw_modes *mode;
 	struct hostapd_channel_data *chan;
 	int i, channel_idx = 0, n_chans, n_chans1;
+	int skip_chans[] = { 38, 42, 46 };
 
 	mode = iface->current_mode;
 	n_chans = dfs_get_used_n_chans(iface, &n_chans1);
@@ -196,6 +206,9 @@ static int dfs_find_channel(struct hostapd_iface *iface,
 	wpa_printf(MSG_DEBUG, "DFS new chan checking %d channels", n_chans);
 	for (i = 0; i < mode->num_channels; i++) {
 		chan = &mode->channels[i];
+
+		if (in_array(skip_chans, ARRAY_SIZE(skip_chans), chan->chan))
+			continue;
 
 		/* Skip HT40/VHT incompatible channels */
 		if (iface->conf->ieee80211n &&

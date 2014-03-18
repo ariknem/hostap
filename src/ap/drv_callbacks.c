@@ -489,6 +489,15 @@ void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
 		break;
 	}
 
+	/* FIXME: It's impossible to tell how exactly an unsolicitated channel
+	 * switch downgraded channel definition in all cases. */
+	if (width == CHAN_WIDTH_80 ||
+	    width == CHAN_WIDTH_80P80 ||
+	    width == CHAN_WIDTH_160)
+		hapd->iconf->ieee80211ac = 1;
+	if (!ht)
+		hapd->iconf->ieee80211ac = 0;
+
 	hapd->iconf->channel = channel;
 	hapd->iconf->ieee80211n = ht;
 	if (!ht)

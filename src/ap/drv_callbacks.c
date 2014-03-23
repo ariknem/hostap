@@ -1225,9 +1225,11 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 #endif /* NEED_AP_MLME */
 	case EVENT_INTERFACE_ENABLED:
 		wpa_msg(hapd->msg_ctx, MSG_INFO, INTERFACE_ENABLED);
+		hostapd_reload_iface(hapd->iface);
 		break;
 	case EVENT_INTERFACE_DISABLED:
 		wpa_msg(hapd->msg_ctx, MSG_INFO, INTERFACE_DISABLED);
+		hapd->driver->stop_ap(hapd->drv_priv);
 		break;
 #ifdef CONFIG_ACS
 	case EVENT_ACS_CHANNEL_SELECTED:

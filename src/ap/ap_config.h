@@ -625,6 +625,9 @@ struct hostapd_config {
 	u8 vht_oper_centr_freq_seg0_idx;
 	u8 vht_oper_centr_freq_seg1_idx;
 
+	int *acs_blacklist;
+	int *acs_whitelist;
+
 #ifdef CONFIG_TESTING_OPTIONS
 	double ignore_probe_probability;
 	double ignore_auth_probability;

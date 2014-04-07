@@ -185,6 +185,24 @@ static int is_in_chanlist(struct hostapd_iface *iface,
 
 
 /*
+ * forbid transitions from W56 (UNII-2e) to W52 (UNII-1) and W53 (UNII-2)
+ * this is relevant mainly for Japan, as in most places W56 are not
+ * dfs channels at all
+ */
+static int dfs_channel_transition_allowed(int old_freq, int new_chan)
+{
+	/* check we come from the W56 range (channels 100-144) */
+	if (old_freq < 5500 || old_freq > 5720)
+		return 1;
+
+	/* W52 and W53 channels span from 36 to 64 */
+	if (new_chan >= 36 && new_chan <= 64)
+		return 0;
+
+	return 1;
+}
+
+/*
  * The function assumes HT40+ operation.
  * Make sure to adjust the following variables after calling this:
  *  - hapd->secondary_channel
@@ -209,6 +227,12 @@ static int dfs_find_channel(struct hostapd_iface *iface,
 
 		if (in_array(skip_chans, ARRAY_SIZE(skip_chans), chan->chan))
 			continue;
+
+		if (!dfs_channel_transition_allowed(iface->freq, chan->chan)) {
+			wpa_printf(MSG_DEBUG, "skip transition to channel: %d",
+				   chan->chan);
+			continue;
+		}
 
 		/* Skip HT40/VHT incompatible channels */
 		if (iface->conf->ieee80211n &&

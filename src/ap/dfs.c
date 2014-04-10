@@ -458,6 +458,46 @@ static int dfs_check_chans_unavailable(struct hostapd_iface *iface,
 	return res;
 }
 
+static struct hostapd_data *
+dfs_get_ongoing_csa_bss(struct hostapd_iface *iface)
+{
+	struct hostapd_iface *iface_iter;
+	int i, j;
+
+	/* try syncing with other interfaces */
+	for (i = 0; i < iface->interfaces->count; i++) {
+		iface_iter = iface->interfaces->iface[i];
+
+		for (j = 0; j < iface_iter->num_bss; j++)
+			if (iface_iter->bss[j]->csa_in_progress)
+				return iface_iter->bss[j];
+	}
+
+	return NULL;
+}
+
+static struct hostapd_channel_data *
+dfs_get_ongoing_csa_channel(struct hostapd_iface *iface)
+{
+	struct hostapd_data *bss;
+	struct hostapd_channel_data *channel = NULL;
+	struct hostapd_hw_modes *mode = iface->current_mode;
+	int i;
+
+	bss = dfs_get_ongoing_csa_bss(iface);
+	if (!bss)
+		return NULL;
+
+	for (i = 0; i < mode->num_channels; i++)
+		if (bss->cs_freq_params.channel == mode->channels[i].chan) {
+			channel = &mode->channels[i];
+			break;
+		}
+
+	wpa_printf(MSG_DEBUG,"DFS: Choosing channel of another ongoing csa (%s): %d",
+		   bss->conf->iface, channel->chan);
+	return channel;
+}
 
 static struct hostapd_channel_data *
 dfs_get_valid_channel(struct hostapd_iface *iface,
@@ -489,11 +529,18 @@ dfs_get_valid_channel(struct hostapd_iface *iface,
 	if (num_available_chandefs == 0)
 		return NULL;
 
+	/* try finding other ongoing csa channels */
+	chan = dfs_get_ongoing_csa_channel(iface);
+	if (chan)
+		goto found;
+
+	os_get_random((u8 *) &_rand, sizeof(_rand));
 	if (os_get_random((u8 *) &_rand, sizeof(_rand)) < 0)
 		_rand = os_random();
 	chan_idx = _rand % num_available_chandefs;
 	dfs_find_channel(iface, &chan, chan_idx, skip_radar);
 
+found:
 	/* dfs_find_channel() calculations assume HT40+ */
 	if (iface->conf->secondary_channel)
 		*secondary_channel = 1;

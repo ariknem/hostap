@@ -1200,7 +1200,7 @@ static void wpa_config_write_global(FILE *f, struct wpa_config *config)
 			config->sched_scan_short_interval);
 	if (config->sched_scan_long_interval !=
 	    DEFAULT_SCHED_SCAN_LONG_INTERVAL)
-		fprintf(f, "sched_scan_long_intervals=%u\n",
+		fprintf(f, "sched_scan_long_interval=%u\n",
 			config->sched_scan_long_interval);
 
 	if (config->wowlan_triggers)

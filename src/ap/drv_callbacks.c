@@ -1011,10 +1011,15 @@ static void hostapd_event_iface_unavailable(struct hostapd_data *hapd)
 static void hostapd_event_dfs_radar_detected(struct hostapd_data *hapd,
 					     struct dfs_event *radar)
 {
+	int i;
+
 	wpa_printf(MSG_DEBUG, "DFS radar detected on %d MHz", radar->freq);
-	hostapd_dfs_radar_detected(hapd->iface, radar->freq, radar->ht_enabled,
-				   radar->chan_offset, radar->chan_width,
-				   radar->cf1, radar->cf2);
+	for (i = 0; i < hapd->iface->interfaces->count; i++) {
+		hostapd_dfs_radar_detected(hapd->iface->interfaces->iface[i],
+					   radar->freq, radar->ht_enabled,
+					   radar->chan_offset, radar->chan_width,
+					   radar->cf1, radar->cf2);
+	}
 }
 
 

@@ -1212,8 +1212,25 @@ static int hostapd_sync_channel(struct hostapd_iface *hapd_iface)
 	for (i = 0; i < hapd_iface->interfaces->count; i++) {
 		struct hostapd_iface *iface = hapd_iface->interfaces->iface[i];
 
-		if (iface->state != HAPD_IFACE_ENABLED)
+		if (iface == hapd_iface)
 			continue;
+
+		wpa_printf(MSG_DEBUG, "iface %s state = %d",
+			   iface->bss[0]->conf->iface, iface->state);
+		switch (iface->state) {
+		case HAPD_IFACE_ENABLED:
+		case HAPD_IFACE_DFS:
+		case HAPD_IFACE_COUNTRY_UPDATE:
+			break;
+		case HAPD_IFACE_UNINITIALIZED:
+		case HAPD_IFACE_DISABLED:
+			continue;
+		case HAPD_IFACE_ACS:
+		case HAPD_IFACE_HT_SCAN:
+			wpa_printf(MSG_DEBUG,
+				   "iface channel wasn't determined yet. try again later");
+			return -EAGAIN;
+		}
 
 		hapd_iface->conf->hw_mode = iface->conf->hw_mode;
 		hapd_iface->conf->channel = iface->conf->channel;
@@ -1251,7 +1268,8 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 	wpa_printf(MSG_DEBUG, "Completing interface initialization");
 
 	if (iface->conf->ap_channel_sync)
-		hostapd_sync_channel(iface);
+		if (hostapd_sync_channel(iface) < 0)
+			return -1;
 
 	if (iface->conf->channel) {
 #ifdef NEED_AP_MLME

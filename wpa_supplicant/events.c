@@ -3137,6 +3137,17 @@ wpa_sc_add_network(struct wpa_supplicant *wpa_s,
 	return added;
 }
 
+static struct wpa_supplicant *wpa_sc_get_iface(struct wpa_supplicant *wpa_s)
+{
+	struct wpa_supplicant *ifs;
+
+	dl_list_for_each(ifs, &wpa_s->radio->ifaces, struct wpa_supplicant,
+			 radio_list) {
+		if (ifs->smart_config_in_sync || ifs->smart_config_freq)
+			return ifs;
+	}
+	return NULL;
+}
 
 void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 			  union wpa_event_data *data)
@@ -3745,15 +3756,20 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 		break;
 	case EVENT_SMART_CONFIG_SYNC: {
 		u32 freq = data->smart_config_sync.freq;
+		struct wpa_supplicant *ifs = wpa_sc_get_iface(wpa_s);
+
 		wpa_dbg(wpa_s, MSG_DEBUG, "event smart config sync, freq = %d",
 			freq);
 
-		if (!wpa_s->smart_config_in_sync) {
+		if (!ifs || !ifs->smart_config_in_sync) {
 			wpa_dbg(wpa_s, MSG_DEBUG,
 				"ignore EVENT_SMART_CONFIG_SYNC event while "
 				"not in sync stage.");
 			break;
 		}
+
+		/* update wpa_s with the actual iface */
+		wpa_s = ifs;
 
 		/* don't start any new scan */
 		wpa_s->smart_config_in_sync = 0;
@@ -3778,14 +3794,18 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 	}
 	case EVENT_SMART_CONFIG_DECODE: {
 		struct smart_config_decode *sc_data = &data->smart_config_decode;
-		wpa_dbg(wpa_s, MSG_DEBUG, "event smart config decode");
+		struct wpa_supplicant *ifs = wpa_sc_get_iface(wpa_s);
 
-		if (!wpa_s->smart_config_freq) {
+
+		if (!ifs || !ifs->smart_config_freq) {
 			wpa_dbg(wpa_s, MSG_ERROR,
 				"ignore SMART_CONFIG_DECODE event while "
 				"not in decoding stage.");
 			break;
 		}
+
+		/* update wpa_s with the actual iface */
+		wpa_s = ifs;
 
 		/* smart config completed. stop it */
 		wpa_supplicant_smart_config_stop(wpa_s);

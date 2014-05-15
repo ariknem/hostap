@@ -232,7 +232,7 @@ int wpa_driver_nl80211_scan(struct i802_bss *bss,
 	if (ret) {
 		wpa_printf(MSG_DEBUG, "nl80211: Scan trigger failed: ret=%d "
 			   "(%s)", ret, strerror(-ret));
-		if (drv->hostapd && is_ap_interface(drv->nlmode)) {
+		if (is_ap_interface(drv->nlmode)) {
 			enum nl80211_iftype old_mode = drv->nlmode;
 
 			/*

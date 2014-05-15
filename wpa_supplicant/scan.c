@@ -1312,17 +1312,23 @@ scan:
 	wpa_setband_scan_freqs(wpa_s, scan_params);
 
 	if (wpa_s->sched_scan_intervals_supported) {
+		int short_interval = wpa_s->conf->sched_scan_short_interval;
+		int long_interval = wpa_s->conf->sched_scan_long_interval;
+		int num_short = wpa_s->conf->sched_scan_num_short_intervals;
+
+		/* override the default intervals in case of smart config */
+		if (wpa_s->smart_config_in_sync) {
+			short_interval = 5;
+			long_interval = 5;
+		}
+
 		wpa_dbg(wpa_s, MSG_DEBUG, "Starting sched scan: "
 			" short interval %d long_interval %d"
 			" num_short_intervals %d",
-			wpa_s->conf->sched_scan_short_interval,
-			wpa_s->conf->sched_scan_long_interval,
-			wpa_s->conf->sched_scan_num_short_intervals);
+			short_interval, long_interval, num_short);
 
 		ret = wpa_supplicant_start_sched_scan(wpa_s, scan_params,
-				   wpa_s->conf->sched_scan_long_interval,
-				   wpa_s->conf->sched_scan_short_interval,
-				   wpa_s->conf->sched_scan_num_short_intervals);
+				   short_interval, long_interval, num_short);
 	} else {
 		wpa_dbg(wpa_s, MSG_DEBUG, "Starting sched scan: interval %d",
 			wpa_s->conf->sched_scan_long_interval);

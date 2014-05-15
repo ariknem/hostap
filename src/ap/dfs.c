@@ -168,6 +168,36 @@ static int in_array(int *arr, int size, int value)
 	return 0;
 }
 
+static inline int chan_is_w52(int channel)
+{
+	return channel >= 36 && channel <= 48;
+}
+
+static inline int chan_is_w53(int channel)
+{
+	return channel >= 52 && channel <= 64;
+}
+
+static inline int chan_is_w56(int channel)
+{
+	return channel >= 100 && channel <= 144;
+}
+
+static inline int chan_is_indoor(struct hostapd_channel_data *chan)
+{
+	return chan_is_w52(chan->chan) || chan_is_w53(chan->chan);
+}
+
+static inline int chan_is_outdoor(struct hostapd_channel_data *chan)
+{
+	return chan_is_w56(chan->chan);
+}
+
+static inline int chan_is_dfs(struct hostapd_channel_data *chan)
+{
+	return chan->flag & HOSTAPD_CHAN_RADAR;
+}
+
 static int is_in_chanlist(struct hostapd_iface *iface,
 			  struct hostapd_channel_data *chan)
 {
@@ -185,21 +215,38 @@ static int is_in_chanlist(struct hostapd_iface *iface,
 
 
 /*
- * forbid transitions from W56 (UNII-2e) to W52 (UNII-1) and W53 (UNII-2)
- * this is relevant mainly for Japan, as in most places W56 are not
- * dfs channels at all
+ * make sure we ovey all the required regulatory rules
  */
-static int dfs_channel_transition_allowed(int old_freq, int new_chan)
+static int
+dfs_channel_transition_allowed(struct hostapd_iface *iface,
+			       struct hostapd_channel_data *new_chan)
 {
-	/* check we come from the W56 range (channels 100-144) */
-	if (old_freq < 5500 || old_freq > 5720)
-		return 1;
+	struct hostapd_channel_data *old_chan;
 
-	/* W52 and W53 channels span from 36 to 64 */
-	if (new_chan >= 36 && new_chan <= 64)
+	old_chan = dfs_get_chan_data(iface->current_mode, iface->freq, 0);
+	if (!old_chan)
+		return 0;
+
+	/* DFS to non-DFS channel is allowed only in indoor use */
+	if (chan_is_dfs(old_chan) && !chan_is_dfs(new_chan) &&
+	    !chan_is_indoor(old_chan))
+		return 0;
+
+	/* indoor channel can move only to another indoor channel */
+	if (chan_is_indoor(old_chan) && !chan_is_indoor(new_chan))
+		return 0;
+
+	/* outdoor channel can move only to another outdoor channel */
+	if (chan_is_outdoor(old_chan) && !chan_is_outdoor(new_chan))
 		return 0;
 
 	return 1;
+}
+
+static int dfs_special_mode(struct hostapd_iface *iface)
+{
+	/* treat JP in a special way */
+	return os_strncmp(iface->conf->country, "JP", 2) == 0;
 }
 
 /*
@@ -228,11 +275,16 @@ static int dfs_find_channel(struct hostapd_iface *iface,
 		if (in_array(skip_chans, ARRAY_SIZE(skip_chans), chan->chan))
 			continue;
 
-		if (!dfs_channel_transition_allowed(iface->freq, chan->chan)) {
+		if (dfs_special_mode(iface) &&
+		    !dfs_channel_transition_allowed(iface, chan)) {
 			wpa_printf(MSG_DEBUG, "skip transition to channel: %d",
 				   chan->chan);
 			continue;
 		}
+
+		/* allow moving to radar channels in case of dfs special mode */
+		if (dfs_special_mode(iface))
+			skip_radar = 0;
 
 		/* Skip HT40/VHT incompatible channels */
 		if (iface->conf->ieee80211n &&

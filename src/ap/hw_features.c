@@ -1147,6 +1147,13 @@ static struct oper_class_map op_class[] = {
 	{ HOSTAPD_MODE_IEEE80211A, 117, 40, 48, 8, BW40MINUS },
 	{ HOSTAPD_MODE_IEEE80211A, 126, 149, 157, 8, BW40PLUS },
 	{ HOSTAPD_MODE_IEEE80211A, 127, 153, 161, 8, BW40MINUS },
+
+	/* acs specific - allow (japan) DFS operating classes */
+	{ HOSTAPD_MODE_IEEE80211A, 37, 52, 60, 8, BW40PLUS },
+	{ HOSTAPD_MODE_IEEE80211A, 42, 56, 64, 8, BW40MINUS },
+	{ HOSTAPD_MODE_IEEE80211A, 39, 100, 132, 8, BW40PLUS },
+	{ HOSTAPD_MODE_IEEE80211A, 44, 104, 136, 8, BW40MINUS },
+
 	{ -1, 0, 0, 0, 0, BW40PLUS } /* terminator */
 };
 

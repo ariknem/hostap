@@ -1269,7 +1269,8 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 
 	wpa_printf(MSG_DEBUG, "Completing interface initialization");
 
-	if (iface->conf->ap_channel_sync)
+	if (iface->conf->ap_channel_sync &&
+	    !hapd->csa_in_progress)
 		if (hostapd_sync_channel(iface) < 0)
 			return -1;
 

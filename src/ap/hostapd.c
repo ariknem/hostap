@@ -1180,6 +1180,12 @@ static int setup_interface2(struct hostapd_iface *iface)
 			wpa_printf(MSG_DEBUG, "Interface initialization will be completed in a callback (ACS)");
 			return 0;
 		}
+
+		/* don't re-check capabilities on channel switch */
+		if (iface->fallback_csa_channel ||
+		    (iface->num_bss && iface->bss[0]->csa_in_progress))
+			goto out;
+
 		ret = hostapd_check_ht_capab(iface, NULL);
 		if (ret < 0)
 			goto fail;
@@ -1192,6 +1198,7 @@ static int setup_interface2(struct hostapd_iface *iface)
 		if (iface->conf->ieee80211h)
 			wpa_printf(MSG_DEBUG, "DFS support is enabled");
 	}
+out:
 	return hostapd_setup_interface_complete(iface, 0);
 
 fail:

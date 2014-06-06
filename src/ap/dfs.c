@@ -521,7 +521,8 @@ dfs_get_ongoing_csa_bss(struct hostapd_iface *iface)
 		iface_iter = iface->interfaces->iface[i];
 
 		for (j = 0; j < iface_iter->num_bss; j++)
-			if (iface_iter->bss[j]->csa_in_progress)
+			if (iface_iter->bss[j]->csa_in_progress ||
+			    iface_iter->fallback_csa_channel)
 				return iface_iter->bss[j];
 	}
 
@@ -535,13 +536,19 @@ dfs_get_ongoing_csa_channel(struct hostapd_iface *iface)
 	struct hostapd_channel_data *channel = NULL;
 	struct hostapd_hw_modes *mode = iface->current_mode;
 	int i;
+	u8 channel_num;
 
 	bss = dfs_get_ongoing_csa_bss(iface);
 	if (!bss)
 		return NULL;
 
+	if (bss->csa_in_progress)
+		channel_num = bss->cs_freq_params.channel;
+	else
+		channel_num = bss->iface->conf->channel;
+
 	for (i = 0; i < mode->num_channels; i++)
-		if (bss->cs_freq_params.channel == mode->channels[i].chan) {
+		if (channel_num == mode->channels[i].chan) {
 			channel = &mode->channels[i];
 			break;
 		}
@@ -1062,9 +1069,13 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
 		iface->conf->vht_oper_centr_freq_seg1_idx =
 			vht_oper_centr_freq_seg1_idx;
 
+		iface->fallback_csa_channel = channel->chan;
 		hostapd_disable_iface(iface);
-		hostapd_enable_iface(iface);
-		return 0;
+		/*
+		 * we have to group all the enable_iface calls
+		 * together, to avoid using multiple channels concurrently
+		 */
+		return 1;
 	}
 
 	/* Channel configuration will be updated once CSA completes and

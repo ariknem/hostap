@@ -344,6 +344,9 @@ struct hostapd_iface {
 	int *basic_rates;
 	int freq;
 
+	/* ongoing "fallback" csa channel (disable+enable) */
+	u8 fallback_csa_channel;
+
 	u16 hw_flags;
 
 	/* Number of associated Non-ERP stations (i.e., stations using 802.11b

@@ -1020,6 +1020,17 @@ static void hostapd_event_dfs_radar_detected(struct hostapd_data *hapd,
 					   radar->chan_offset, radar->chan_width,
 					   radar->cf1, radar->cf2);
 	}
+
+	for (i = 0; i < hapd->iface->interfaces->count; i++) {
+		struct hostapd_iface *iface =
+			hapd->iface->interfaces->iface[i];
+
+		if (!iface->fallback_csa_channel)
+			continue;
+
+		if (hostapd_enable_iface(iface))
+			iface->fallback_csa_channel = 0;
+	}
 }
 
 

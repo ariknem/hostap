@@ -1270,7 +1270,7 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 	wpa_printf(MSG_DEBUG, "Completing interface initialization");
 
 	if (iface->conf->ap_channel_sync &&
-	    !hapd->csa_in_progress)
+	    !hapd->csa_in_progress && !iface->fallback_csa_channel)
 		if (hostapd_sync_channel(iface) < 0)
 			return -1;
 
@@ -1388,6 +1388,12 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 		if (hostapd_init_wps_complete(iface->bss[j]))
 			goto fail;
 	}
+
+	/*
+	 * TODO: this should probably be in a different place
+	 * (e.g. to be cleared on errors as well)
+	 */
+	hapd->iface->fallback_csa_channel = 0;
 
 	hostapd_set_state(iface, HAPD_IFACE_ENABLED);
 	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, AP_EVENT_ENABLED);

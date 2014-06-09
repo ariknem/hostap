@@ -246,7 +246,9 @@ dfs_channel_transition_allowed(struct hostapd_iface *iface,
 static int dfs_special_mode(struct hostapd_iface *iface)
 {
 	/* treat JP in a special way */
-	return os_strncmp(iface->conf->country, "JP", 2) == 0;
+	return (os_strncmp(iface->conf->country, "JP", 2) == 0 ||
+		os_strncmp(iface->conf->country, "JI", 2) == 0 ||
+		os_strncmp(iface->conf->country, "JO", 2) == 0);
 }
 
 /*
@@ -274,14 +276,14 @@ static int dfs_find_channel(struct hostapd_iface *iface,
 
 		if (in_array(skip_chans, ARRAY_SIZE(skip_chans), chan->chan))
 			continue;
-
+#if 0
 		if (dfs_special_mode(iface) &&
 		    !dfs_channel_transition_allowed(iface, chan)) {
 			wpa_printf(MSG_DEBUG, "skip transition to channel: %d",
 				   chan->chan);
 			continue;
 		}
-
+#endif
 		/* allow moving to radar channels in case of dfs special mode */
 		if (dfs_special_mode(iface))
 			skip_radar = 0;

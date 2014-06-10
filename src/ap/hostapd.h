@@ -346,6 +346,12 @@ struct hostapd_iface {
 
 	/* ongoing "fallback" csa channel (disable+enable) */
 	u8 fallback_csa_channel;
+	/*
+	 * a new channel was just chosen for this interface (during
+	 * the dfs radar event handling), so allow other interfaces
+	 * to sync to it
+	 */
+	u8 new_chan_chosen;
 
 	u16 hw_flags;
 

@@ -522,9 +522,13 @@ dfs_get_ongoing_csa_bss(struct hostapd_iface *iface)
 	for (i = 0; i < iface->interfaces->count; i++) {
 		iface_iter = iface->interfaces->iface[i];
 
+		if (iface_iter == iface)
+			continue;
+
 		for (j = 0; j < iface_iter->num_bss; j++)
 			if (iface_iter->bss[j]->csa_in_progress ||
-			    iface_iter->fallback_csa_channel)
+			    iface_iter->fallback_csa_channel ||
+			    iface_iter->new_chan_chosen)
 				return iface_iter->bss[j];
 	}
 
@@ -950,6 +954,7 @@ static int hostapd_dfs_start_channel_switch_cac(struct hostapd_iface *iface)
 		vht_oper_centr_freq_seg0_idx;
 	iface->conf->vht_oper_centr_freq_seg1_idx =
 		vht_oper_centr_freq_seg1_idx;
+	iface->new_chan_chosen = 1;
 	err = 0;
 
 	hostapd_setup_interface_complete(iface, err);

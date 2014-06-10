@@ -1415,12 +1415,6 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 			goto fail;
 	}
 
-	/*
-	 * TODO: this should probably be in a different place
-	 * (e.g. to be cleared on errors as well)
-	 */
-	hapd->iface->fallback_csa_channel = 0;
-
 	hostapd_set_state(iface, HAPD_IFACE_ENABLED);
 	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, AP_EVENT_ENABLED);
 	if (hapd->setup_complete_cb)

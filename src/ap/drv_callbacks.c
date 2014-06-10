@@ -1019,8 +1019,11 @@ static void hostapd_event_dfs_radar_detected(struct hostapd_data *hapd,
 	 * clear all previous dfs handling indications. this implicitly assumes
 	 * we can can only operate on a single dfs channel
 	 */
-	for (i = 0; i < hapd->iface->interfaces->count; i++)
+	for (i = 0; i < hapd->iface->interfaces->count; i++) {
 		hapd->iface->interfaces->iface[i]->new_chan_chosen = 0;
+		hapd->iface->interfaces->iface[i]->fallback_csa_channel = 0;
+	}
+
 
 	for (i = 0; i < hapd->iface->interfaces->count; i++) {
 		hostapd_dfs_radar_detected(hapd->iface->interfaces->iface[i],

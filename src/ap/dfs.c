@@ -564,6 +564,23 @@ dfs_get_ongoing_csa_channel(struct hostapd_iface *iface)
 	return channel;
 }
 
+char *dfs_info(struct hostapd_channel_data *chan);
+static void dfs_print_channels_info(struct hostapd_hw_modes *mode)
+{
+	int i;
+
+	for (i = 0; i < mode->num_channels; i++) {
+		struct hostapd_channel_data *chan = &mode->channels[i];
+		int dfs = chan->flag & HOSTAPD_CHAN_RADAR;
+		const char *enabled_str = chan->flag & HOSTAPD_CHAN_DISABLED ?
+			"Disabled" : "Enabled";
+
+		wpa_printf(MSG_DEBUG, "Channel %d (%d) - %s",
+			   chan->chan, chan->freq,
+			   dfs ? dfs_info(chan) : enabled_str);
+	}
+}
+
 static struct hostapd_channel_data *
 dfs_get_valid_channel(struct hostapd_iface *iface,
 		      int *secondary_channel,
@@ -588,6 +605,8 @@ dfs_get_valid_channel(struct hostapd_iface *iface,
 	mode = iface->current_mode;
 	if (mode->mode != HOSTAPD_MODE_IEEE80211A)
 		return NULL;
+
+	dfs_print_channels_info(mode);
 
 	/* Get the count first */
 	num_available_chandefs = dfs_find_channel(iface, NULL, 0, skip_radar);

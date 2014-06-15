@@ -42,7 +42,7 @@ void hostapd_free_hw_features(struct hostapd_hw_modes *hw_features,
 
 
 #ifndef CONFIG_NO_STDOUT_DEBUG
-static char * dfs_info(struct hostapd_channel_data *chan)
+char * dfs_info(struct hostapd_channel_data *chan)
 {
 	static char info[256];
 	char *state;

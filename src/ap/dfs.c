@@ -581,6 +581,18 @@ static void dfs_print_channels_info(struct hostapd_hw_modes *mode)
 	}
 }
 
+void dfs_print_channels(struct hapd_interfaces *interfaces)
+{
+	int i;
+
+	for (i = 0; i < interfaces->count; i++) {
+		struct hostapd_iface *iface = interfaces->iface[i];
+
+		wpa_printf(MSG_DEBUG, "%s Channels:", iface->bss[0]->conf->iface);
+		dfs_print_channels_info(iface->current_mode);
+	}
+}
+
 static struct hostapd_channel_data *
 dfs_get_valid_channel(struct hostapd_iface *iface,
 		      int *secondary_channel,

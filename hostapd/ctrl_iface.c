@@ -39,11 +39,11 @@
 #include "ap/hs20.h"
 #include "ap/wnm_ap.h"
 #include "ap/wpa_auth.h"
+#include "ap/dfs.h"
 #include "wps/wps_defs.h"
 #include "wps/wps.h"
 #include "config_file.h"
 #include "ctrl_iface.h"
-
 
 struct wpa_ctrl_dst {
 	struct wpa_ctrl_dst *next;
@@ -2366,6 +2366,8 @@ static void hostapd_global_ctrl_iface_receive(int sock, void *eloop_ctx,
 	} else if (os_strncmp(buf, "REMOVE ", 7) == 0) {
 		if (hostapd_ctrl_iface_remove(interfaces, buf + 7) < 0)
 			reply_len = -1;
+	} else if (os_strcmp(buf, "CHANNELS") == 0) {
+		dfs_print_channels(interfaces);
 #ifdef CONFIG_MODULE_TESTS
 	} else if (os_strcmp(buf, "MODULE_TESTS") == 0) {
 		int hapd_module_tests(void);

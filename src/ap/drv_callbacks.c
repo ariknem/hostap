@@ -1068,10 +1068,15 @@ static void hostapd_event_dfs_cac_aborted(struct hostapd_data *hapd,
 static void hostapd_event_dfs_nop_finished(struct hostapd_data *hapd,
 					   struct dfs_event *radar)
 {
+	int i;
+
 	wpa_printf(MSG_DEBUG, "DFS NOP finished on %d MHz", radar->freq);
-	hostapd_dfs_nop_finished(hapd->iface, radar->freq, radar->ht_enabled,
-				 radar->chan_offset, radar->chan_width,
-				 radar->cf1, radar->cf2);
+
+	for (i = 0; i < hapd->iface->interfaces->count; i++)
+		hostapd_dfs_nop_finished(hapd->iface->interfaces->iface[i],
+					 radar->freq, radar->ht_enabled,
+					 radar->chan_offset, radar->chan_width,
+					 radar->cf1, radar->cf2);
 }
 
 #endif /* NEED_AP_MLME */

@@ -536,28 +536,71 @@ dfs_get_ongoing_csa_bss(struct hostapd_iface *iface)
 }
 
 static struct hostapd_channel_data *
+get_channel_data(struct hostapd_iface *iface, u8 channel_num)
+{
+	struct hostapd_hw_modes *mode = iface->current_mode;
+	int i;
+
+	for (i = 0; i < mode->num_channels; i++)
+		if (channel_num == mode->channels[i].chan)
+			return &mode->channels[i];
+
+	return NULL;
+}
+
+static struct hostapd_data *
+dfs_get_running_bss(struct hostapd_iface *iface)
+{
+	struct hostapd_iface *iface_iter;
+	struct hostapd_channel_data *channel;
+	int i;
+
+	/* try syncing with other running (or in cac) interfaces */
+	for (i = 0; i < iface->interfaces->count; i++) {
+		iface_iter = iface->interfaces->iface[i];
+
+		if (iface_iter == iface)
+			continue;
+
+		switch (iface_iter->state) {
+		case HAPD_IFACE_ENABLED:
+		case HAPD_IFACE_DFS:
+		case HAPD_IFACE_COUNTRY_UPDATE:
+			break;
+		default:
+			continue;
+		}
+
+		channel = get_channel_data(iface, iface_iter->conf->channel);
+		if (!channel || !dfs_channel_available(channel, 0))
+			continue;
+
+		return iface_iter->bss[0];
+	}
+
+	return NULL;
+}
+
+static struct hostapd_channel_data *
 dfs_get_ongoing_csa_channel(struct hostapd_iface *iface)
 {
 	struct hostapd_data *bss;
 	struct hostapd_channel_data *channel = NULL;
-	struct hostapd_hw_modes *mode = iface->current_mode;
-	int i;
 	u8 channel_num;
 
 	bss = dfs_get_ongoing_csa_bss(iface);
-	if (!bss)
-		return NULL;
+	if (!bss) {
+		bss = dfs_get_running_bss(iface);
+		if (!bss)
+			return NULL;
+	}
 
 	if (bss->csa_in_progress)
 		channel_num = bss->cs_freq_params.channel;
 	else
 		channel_num = bss->iface->conf->channel;
 
-	for (i = 0; i < mode->num_channels; i++)
-		if (channel_num == mode->channels[i].chan) {
-			channel = &mode->channels[i];
-			break;
-		}
+	channel = get_channel_data(iface, channel_num);
 
 	if (!dfs_channel_available(channel, 0)) {
 		wpa_printf(MSG_DEBUG,

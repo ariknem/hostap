@@ -559,6 +559,13 @@ dfs_get_ongoing_csa_channel(struct hostapd_iface *iface)
 			break;
 		}
 
+	if (!dfs_channel_available(channel, 0)) {
+		wpa_printf(MSG_DEBUG,
+			   "DFS: Ignore channel of another ongoing csa (%s - %d), because it's not available for this iface (flags=0x%x)",
+			   bss->conf->iface, channel->chan, channel->flag);
+		return NULL;
+	}
+
 	wpa_printf(MSG_DEBUG,"DFS: Choosing channel of another ongoing csa (%s): %d",
 		   bss->conf->iface, channel->chan);
 	return channel;

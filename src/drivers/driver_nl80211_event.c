@@ -18,6 +18,7 @@
 #include "common/ieee802_11_defs.h"
 #include "common/ieee802_11_common.h"
 #include "driver_nl80211.h"
+#include "ti_vendor_cmd.h"
 
 
 static const char * nl80211_command_to_string(enum nl80211_commands cmd)
@@ -1578,6 +1579,73 @@ static void nl80211_vendor_event_qca(struct wpa_driver_nl80211_data *drv,
 }
 
 
+static void
+nl80211_vendor_ti_sc_sync_event(struct wpa_driver_nl80211_data *drv,
+				struct nlattr **tb)
+{
+	union wpa_event_data data;
+	u32 freq;
+
+	wpa_printf(MSG_DEBUG, "nl80211: vendor ti sc sync event");
+
+	if (!tb[WLCORE_VENDOR_ATTR_FREQ])
+		return;
+
+	freq = nla_get_u32(tb[WLCORE_VENDOR_ATTR_FREQ]);
+	wpa_printf(MSG_DEBUG, "found freq=%d", freq);
+
+	os_memset(&data, 0, sizeof(data));
+	data.smart_config_sync.freq = freq;
+	wpa_supplicant_event(drv->ctx, EVENT_SMART_CONFIG_SYNC, &data);
+}
+
+static void
+nl80211_vendor_ti_sc_decode_event(struct wpa_driver_nl80211_data *drv,
+				  struct nlattr **tb)
+{
+	union wpa_event_data data = {};
+	struct smart_config_decode *sc_data = &data.smart_config_decode;
+	wpa_printf(MSG_DEBUG, "nl80211: vendor ti sc decode event");
+
+	if (!tb[WLCORE_VENDOR_ATTR_SSID])
+		return;
+
+	sc_data->ssid = nla_data(tb[WLCORE_VENDOR_ATTR_SSID]);
+	sc_data->ssid_len = nla_len(tb[WLCORE_VENDOR_ATTR_SSID]);
+
+	if (tb[WLCORE_VENDOR_ATTR_PSK]) {
+		sc_data->psk = nla_data(tb[WLCORE_VENDOR_ATTR_PSK]);
+		sc_data->psk_len = nla_len(tb[WLCORE_VENDOR_ATTR_PSK]);
+	}
+
+	wpa_supplicant_event(drv->ctx, EVENT_SMART_CONFIG_DECODE, &data);
+}
+
+static void nl80211_vendor_event_ti(struct wpa_driver_nl80211_data *drv,
+				     u32 subcmd, struct nlattr *event_tb)
+{
+	struct nlattr *ti_tb[NUM_WLCORE_VENDOR_ATTR] = {};
+
+	if (event_tb &&
+	    nla_parse_nested(ti_tb, MAX_WLCORE_VENDOR_ATTR, event_tb, NULL))
+		return;
+
+	switch (subcmd) {
+	case WLCORE_VENDOR_EVENT_SC_SYNC:
+		nl80211_vendor_ti_sc_sync_event(drv, ti_tb);
+		break;
+	case WLCORE_VENDOR_EVENT_SC_DECODE:
+		nl80211_vendor_ti_sc_decode_event(drv, ti_tb);
+		break;
+	default:
+		wpa_printf(MSG_DEBUG,
+			   "nl80211: Ignore unsupported TI vendor event %u",
+			   subcmd);
+		break;
+	}
+}
+
+
 static void nl80211_vendor_event(struct wpa_driver_nl80211_data *drv,
 				 struct nlattr **tb)
 {
@@ -1613,6 +1681,10 @@ static void nl80211_vendor_event(struct wpa_driver_nl80211_data *drv,
 	}
 
 	switch (vendor_id) {
+	case TI_OUI:
+		nl80211_vendor_event_ti(drv, subcmd,
+					tb[NL80211_ATTR_VENDOR_DATA]);
+		break;
 	case OUI_QCA:
 		nl80211_vendor_event_qca(drv, subcmd, data, len);
 		break;

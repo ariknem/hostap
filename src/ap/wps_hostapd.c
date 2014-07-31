@@ -81,6 +81,13 @@ static int hostapd_wps_for_each(struct hostapd_data *hapd,
 {
 	struct hostapd_iface *iface = hapd->iface;
 	struct wps_for_each_data data;
+
+	/*
+	 * the "for_each" here seems like leftover when multiple control
+	 * interfaces were not used. call only the current hapd now.
+	 */
+	return func(hapd, ctx);
+
 	data.func = func;
 	data.ctx = ctx;
 	data.calling_hapd = hapd;

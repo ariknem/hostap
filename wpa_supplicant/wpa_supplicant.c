@@ -1271,6 +1271,7 @@ static void wpas_ext_capab_byte(struct wpa_supplicant *wpa_s, u8 *pos, int idx)
 
 	switch (idx) {
 	case 0: /* Bits 0-7 */
+		*pos |= 0x01; /* Bit 0 - 20/40 Coex */
 		break;
 	case 1: /* Bits 8-15 */
 		break;

@@ -638,6 +638,14 @@ static inline int wpa_drv_status(struct wpa_supplicant *wpa_s,
 	return wpa_s->driver->status(wpa_s->drv_priv, buf, buflen);
 }
 
+static inline int wpa_drv_shared_ap_freq(struct wpa_supplicant *wpa_s,
+					 struct wpa_channel_info *info)
+{
+	if (!wpa_s->driver->shared_ap_freq)
+		return -1;
+	return wpa_s->driver->shared_ap_freq(wpa_s->drv_priv, info);
+}
+
 static inline int wpa_drv_set_qos_map(struct wpa_supplicant *wpa_s,
 				      const u8 *qos_map_set, u8 qos_map_set_len)
 {

@@ -1328,7 +1328,7 @@ scan:
 			short_interval, long_interval, num_short);
 
 		ret = wpa_supplicant_start_sched_scan(wpa_s, scan_params,
-				   short_interval, long_interval, num_short);
+				   long_interval, short_interval, num_short);
 	} else {
 		wpa_dbg(wpa_s, MSG_DEBUG, "Starting sched scan: interval %d",
 			wpa_s->conf->sched_scan_long_interval);

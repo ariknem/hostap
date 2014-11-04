@@ -199,6 +199,21 @@ static u8 * hostapd_eid_country_add(u8 *pos, u8 *end, int chan_spacing,
 	return pos;
 }
 
+static int
+hostapd_eid_country_skip_channel(const char *country,
+				 struct hostapd_channel_data *chan)
+{
+	int c = chan->chan;
+
+	/* skip channels 38, 42, 46 if country is not JP */
+	if (os_memcmp(country, "JP", 2) == 0)
+		return 0;
+
+	if (c == 38 || c == 42 || c == 46)
+		return 1;
+
+	return 0;
+}
 
 static u8 * hostapd_eid_country(struct hostapd_data *hapd, u8 *eid,
 				int max_len)
@@ -227,6 +242,9 @@ static u8 * hostapd_eid_country(struct hostapd_data *hapd, u8 *eid,
 	for (i = 0; i < mode->num_channels; i++) {
 		struct hostapd_channel_data *chan = &mode->channels[i];
 		if (chan->flag & HOSTAPD_CHAN_DISABLED)
+			continue;
+		if (hostapd_eid_country_skip_channel(hapd->iconf->country,
+						     chan))
 			continue;
 		if (start && prev &&
 		    prev->chan + chan_spacing == chan->chan &&

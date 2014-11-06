@@ -943,7 +943,6 @@ int hostapd_check_ht_capab(struct hostapd_iface *iface,
 	if (!ieee80211ac_supported_vht_capab(iface))
 		return -1;
 #endif /* CONFIG_IEEE80211AC */
-	ret = ieee80211n_check_40mhz(iface);
 	if (scan_res)
 		ret = ieee80211n_check_scan(iface, scan_res);
 	else

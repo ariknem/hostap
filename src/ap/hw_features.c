@@ -515,6 +515,9 @@ static int ieee80211n_check_scan(struct hostapd_iface *iface,
 	int oper40;
 	int res;
 
+	if (!iface->conf->secondary_channel)
+		return 0; /* HT40 not used */
+
 	if (iface->current_mode->mode == HOSTAPD_MODE_IEEE80211A)
 		oper40 = ieee80211n_check_40mhz_5g(iface, scan_res);
 	else

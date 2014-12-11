@@ -4887,6 +4887,13 @@ static int wpa_driver_nl80211_set_supp_port(void *priv, int authorized)
 	return ret;
 }
 
+/* dummy defines */
+#define WL1271_TM_ATTR_CMD_ID 0
+#define WL1271_TM_CMD_SMART_CONFIG_START 0
+#define WL1271_TM_ATTR_CMD_ID 0
+#define WL1271_TM_ATTR_GROUP_ID 0
+#define WL1271_TM_CMD_SMART_CONFIG_STOP 0
+
 static int wpa_driver_nl80211_testmode_cmd(struct wpa_driver_nl80211_data *drv,
 					   struct nl_msg *nested)
 {

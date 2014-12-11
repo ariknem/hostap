@@ -41,7 +41,9 @@ void scan_only_handler(struct wpa_supplicant *wpa_s,
 int wpas_scan_scheduled(struct wpa_supplicant *wpa_s);
 int wpa_supplicant_start_sched_scan(struct wpa_supplicant *wpa_s,
 				    struct wpa_driver_scan_params *params,
-				    int interval);
+				    int long_interval,
+				    int short_interval,
+				    u8 num_short_intervals);
 struct wpa_driver_scan_params *
 wpa_scan_clone_params(const struct wpa_driver_scan_params *src);
 void wpa_scan_free_params(struct wpa_driver_scan_params *params);

@@ -38,6 +38,16 @@
 #include "rfkill.h"
 #include "driver_nl80211.h"
 
+/* dummy enum */
+enum {
+	WL1271_TM_ATTR_FREQ,
+	WL1271_TM_ATTR_SSID,
+	WL1271_TM_ATTR_PSK,
+	WL1271_TM_ATTR_MAX,
+	WL1271_TM_ATTR_SMART_CONFIG_EVENT,
+	WLCORE_TM_SC_EVENT_SYNC,
+	WLCORE_TM_SC_EVENT_DECODE,
+};
 
 #ifndef CONFIG_LIBNL20
 /*
@@ -4966,6 +4976,7 @@ static int wpa_driver_nl80211_set_supp_port(void *priv, int authorized)
 #define WL1271_TM_ATTR_CMD_ID 0
 #define WL1271_TM_ATTR_GROUP_ID 0
 #define WL1271_TM_CMD_SMART_CONFIG_STOP 0
+
 
 static int wpa_driver_nl80211_testmode_cmd(struct wpa_driver_nl80211_data *drv,
 					   struct nl_msg *nested)
